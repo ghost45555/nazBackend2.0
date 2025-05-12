@@ -299,7 +299,8 @@
                                     <div id="selectedProductCertificationsList" class="cert-list"></div>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary">Add Product</button>
+                                <button type="submit" class="btn btn-primary" id="submitProductBtn">Add Product</button>
+                                <button type="button" class="btn btn-secondary ms-2" id="cancelEditBtn" style="display: none;" onclick="resetProductForm()">Cancel Edit</button>
                             </form>
                         </div>
                     </div>
@@ -364,17 +365,56 @@
         const API_URL = 'http://localhost:8080/api';
         const BACKEND_URL = 'http://localhost:8080';
 
+        // Helper function to fetch with authentication token
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('token');
+            const headers = {
+                ...(options.headers || {}),
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            // Special handling for FormData: fetch adds Content-Type automatically
+            if (!(options.body instanceof FormData)) {
+                // Default to JSON content type if not specified and body exists
+                if (!headers['Content-Type'] && options.body) {
+                    headers['Content-Type'] = 'application/json';
+                }
+            } else {
+                // Remove Content-Type header if body is FormData, let the browser set it
+                delete headers['Content-Type'];
+            }
+
+            const response = await fetch(url, {
+                ...options,
+                headers: headers
+            });
+
+            if (response.status === 401) {
+                // Unauthorized: redirect to login or show message
+                console.error('Authentication required. Redirecting to login.');
+                // window.location.href = '/login.html'; // Optional: redirect
+                throw new Error('Authentication failed. Please log in again.');
+            }
+
+            return response;
+        }
+
         // Arrays to store temporary data
         let features = [];
         let specifications = [];
         let certifications = [];
         let weightOptions = [];
         let hasNutritionalInfo = false;
+        let editingProductId = null; // To track if we are editing
 
         // Load all products
         async function loadProducts() {
             try {
-                const response = await fetch(`${API_URL}/products`);
+                // Use fetchWithAuth for the initial products list
+                const response = await fetchWithAuth(`${API_URL}/products`);
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Failed to load products');
@@ -388,14 +428,14 @@
 
                 for (const product of products) {
                     try {
-                        // Fetch additional product details
+                        // Use fetchWithAuth for all subsequent detail fetches
                         const [featuresResponse, specificationsResponse, certificationsResponse, 
                               nutritionalInfoResponse, weightOptionsResponse] = await Promise.all([
-                            fetch(`${API_URL}/products/${product.id}/features`),
-                            fetch(`${API_URL}/products/${product.id}/specifications`),
-                            fetch(`${API_URL}/products/${product.id}/certifications`),
-                            fetch(`${API_URL}/products/${product.id}/nutritional-info`),
-                            fetch(`${API_URL}/products/${product.id}/weight-options`)
+                            fetchWithAuth(`${API_URL}/products/${product.id}/features`),
+                            fetchWithAuth(`${API_URL}/products/${product.id}/specifications`),
+                            fetchWithAuth(`${API_URL}/products/${product.id}/certifications`),
+                            fetchWithAuth(`${API_URL}/products/${product.id}/nutritional-info`),
+                            fetchWithAuth(`${API_URL}/products/${product.id}/weight-options`)
                         ]);
                         
                         const features = await featuresResponse.json();
@@ -542,7 +582,8 @@
                                     ${weightOptionsHtml}
                                     ${nutritionalInfoHtml}
                                     <div class="mt-3">
-                                        <button class="btn btn-danger" onclick="deleteProduct(${product.id})">Delete</button>
+                                        <button class="btn btn-danger btn-sm me-2" onclick="deleteProduct(${product.id})">Delete</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="startEditProduct(${product.id})">Edit</button>
                                     </div>
                                 </div>
                             </div>
@@ -568,7 +609,11 @@
         // Load all categories
         async function loadCategories() {
             try {
-                const response = await fetch(`${API_URL}/categories`);
+                // Use fetchWithAuth
+                const response = await fetchWithAuth(`${API_URL}/categories`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const categories = await response.json();
                 const categoriesList = document.getElementById('categoriesList');
                 const categorySelect = document.getElementById('categoryId');
@@ -600,13 +645,15 @@
                 });
             } catch (error) {
                 console.error('Error loading categories:', error);
+                alert('Error loading categories: ' + error.message);
             }
         }
 
         // Load all certifications
         async function loadCertifications() {
             try {
-                const response = await fetch(`${API_URL}/certifications`);
+                // Use fetchWithAuth
+                const response = await fetchWithAuth(`${API_URL}/certifications`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -641,7 +688,7 @@
                 });
             } catch (error) {
                 console.error('Error loading certifications:', error);
-                alert('Error loading certifications. Please try again later.');
+                alert('Error loading certifications: ' + error.message);
             }
         }
 
@@ -769,135 +816,395 @@
             nutritionalInfoForm.style.display = hasNutritionalInfo ? 'block' : 'none';
         }
 
+        // Reset the product form to its initial state
+        function resetProductForm() {
+            document.getElementById('productForm').reset();
+            features = [];
+            specifications = [];
+            certifications = [];
+            weightOptions = [];
+            hasNutritionalInfo = false;
+            editingProductId = null;
+            
+            updateFeaturesList();
+            updateSpecificationsList();
+            updateCertificationsList();
+            updateWeightOptionsList();
+            
+            document.getElementById('nutritionalInfoForm').style.display = 'none';
+            document.getElementById('hasNutritionalInfo').checked = false;
+            
+            // Reset form title and button text
+            document.querySelector('#productForm').parentNode.querySelector('.card-title').textContent = 'Add New Product';
+            document.getElementById('submitProductBtn').textContent = 'Add Product';
+            document.getElementById('cancelEditBtn').style.display = 'none';
+            
+            // Clear file inputs explicitly as reset() might not clear them
+            document.getElementById('productImage').value = '';
+            document.getElementById('packagingPhotoInput').value = '';
+        }
+
+        // Populate form for editing
+        async function startEditProduct(productId) {
+            console.log(`Starting edit for product ID: ${productId}`);
+            resetProductForm(); // Clear form before populating
+            editingProductId = productId;
+
+            try {
+                // Use fetchWithAuth for all detail fetches
+                const [productResponse, featuresResponse, specificationsResponse, 
+                       certificationsResponse, nutritionalInfoResponse, weightOptionsResponse] = await Promise.all([
+                    fetchWithAuth(`${API_URL}/products/admin/${productId}`), // Fetch product DTO for admin
+                    fetchWithAuth(`${API_URL}/products/${productId}/features`),
+                    fetchWithAuth(`${API_URL}/products/${productId}/specifications`),
+                    fetchWithAuth(`${API_URL}/products/${productId}/certifications`),
+                    fetchWithAuth(`${API_URL}/products/${productId}/nutritional-info`),
+                    fetchWithAuth(`${API_URL}/products/${productId}/weight-options`)
+                ]);
+
+                if (!productResponse.ok) throw new Error('Failed to fetch product details');
+                const product = await productResponse.json();
+
+                // Populate basic form fields
+                document.getElementById('name').value = product.name;
+                document.getElementById('description').value = product.description || '';
+                document.getElementById('categoryId').value = product.category ? product.category.id : ''; // Assuming product has category object with id
+                document.getElementById('pricePerKg').value = product.pricePerKg;
+                document.getElementById('inventory').value = product.inventory;
+                document.getElementById('isNewArrival').checked = product.isNewArrival;
+                document.getElementById('isBestSeller').checked = product.isBestSeller;
+                document.getElementById('hasDiscount').checked = product.hasDiscount;
+                document.getElementById('discountPercentage').value = product.discountPercentage || '';
+
+                // Populate features
+                if (featuresResponse.ok) {
+                    const fetchedFeatures = await featuresResponse.json();
+                    features = fetchedFeatures.map(f => f.feature); // Store just the feature strings
+                    updateFeaturesList();
+                }
+
+                // Populate specifications
+                if (specificationsResponse.ok) {
+                    const fetchedSpecs = await specificationsResponse.json();
+                    specifications = fetchedSpecs.map(s => ({ name: s.specName, value: s.specValue })); // Store as objects
+                    updateSpecificationsList();
+                }
+                
+                // Populate certifications
+                if (certificationsResponse.ok) {
+                    const fetchedCerts = await certificationsResponse.json();
+                    certifications = fetchedCerts.map(c => ({ id: c.id, name: c.name })); // Store id and name
+                    updateCertificationsList();
+                }
+
+                // Populate weight options (NOTE: Editing existing photos needs careful handling, this setup just loads text data)
+                if (weightOptionsResponse.ok) {
+                    const fetchedWeights = await weightOptionsResponse.json();
+                    // We store the photo reference from fetch, but don't re-populate the file input for security reasons.
+                    // Editing weight options might require a more complex UI or approach if photos need changing.
+                    weightOptions = fetchedWeights.map(w => ({
+                        id: w.id, // Assuming weight options have IDs for updates
+                        weightValue: w.weightValue,
+                        price: w.price,
+                        packagingPhotoUrl: w.packagingPhoto // Keep track of existing photo URL
+                        // packagingPhoto: undefined // File input cannot be pre-filled
+                    }));
+                    updateWeightOptionsList(); // Update UI list (without showing file selection)
+                }
+
+                // Populate nutritional info
+                if (nutritionalInfoResponse.ok) {
+                    const fetchedNutritionalInfo = await nutritionalInfoResponse.json();
+                    if (fetchedNutritionalInfo) {
+                        hasNutritionalInfo = true;
+                        document.getElementById('hasNutritionalInfo').checked = true;
+                        toggleNutritionalInfoForm(); // Show the form
+                        
+                        document.getElementById('servingSize').value = fetchedNutritionalInfo.servingSize || '';
+                        document.getElementById('servingsPerContainer').value = fetchedNutritionalInfo.servingsPerContainer || '';
+                        document.getElementById('calories').value = fetchedNutritionalInfo.calories || '';
+                        document.getElementById('totalFat').value = fetchedNutritionalInfo.totalFat || '';
+                        document.getElementById('saturatedFat').value = fetchedNutritionalInfo.saturatedFat || '';
+                        document.getElementById('transFat').value = fetchedNutritionalInfo.transFat || '';
+                        document.getElementById('cholesterol').value = fetchedNutritionalInfo.cholesterol || '';
+                        document.getElementById('sodium').value = fetchedNutritionalInfo.sodium || '';
+                        document.getElementById('totalCarbohydrates').value = fetchedNutritionalInfo.totalCarbohydrates || '';
+                        document.getElementById('dietaryFiber').value = fetchedNutritionalInfo.dietaryFiber || '';
+                        document.getElementById('sugars').value = fetchedNutritionalInfo.sugars || '';
+                        document.getElementById('protein').value = fetchedNutritionalInfo.protein || '';
+                        document.getElementById('vitaminA').value = fetchedNutritionalInfo.vitaminA || '';
+                        document.getElementById('vitaminC').value = fetchedNutritionalInfo.vitaminC || '';
+                        document.getElementById('calcium').value = fetchedNutritionalInfo.calcium || '';
+                        document.getElementById('iron').value = fetchedNutritionalInfo.iron || '';
+                    }
+                } else {
+                     document.getElementById('hasNutritionalInfo').checked = false;
+                     toggleNutritionalInfoForm(); // Ensure form is hidden if no data
+                }
+
+
+                // Change form title and button
+                document.querySelector('#productForm').parentNode.querySelector('.card-title').textContent = 'Edit Product';
+                document.getElementById('submitProductBtn').textContent = 'Update Product';
+                document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+                // Scroll to the form
+                 document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                console.error(`Error fetching details for product ${productId}:`, error);
+                alert('Error loading product details for editing: ' + error.message);
+                resetProductForm(); // Reset form on error
+            }
+        }
+
         // Add new product
         document.getElementById('productForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData();
-            formData.append('name', document.getElementById('name').value);
-            formData.append('description', document.getElementById('description').value);
-            formData.append('categoryId', document.getElementById('categoryId').value);
-            formData.append('pricePerKg', document.getElementById('pricePerKg').value);
-            formData.append('inventory', document.getElementById('inventory').value);
-            formData.append('isNewArrival', document.getElementById('isNewArrival').checked);
-            formData.append('isBestSeller', document.getElementById('isBestSeller').checked);
-            formData.append('hasDiscount', document.getElementById('hasDiscount').checked);
-            formData.append('discountPercentage', document.getElementById('discountPercentage').value || '0');
-            formData.append('image', document.getElementById('productImage').files[0]);
+
+            // --- Gather Data --- 
+            const name = document.getElementById('name').value;
+            const description = document.getElementById('description').value;
+            const categoryId = document.getElementById('categoryId').value;
+            const pricePerKg = document.getElementById('pricePerKg').value;
+            const inventory = document.getElementById('inventory').value;
+            const isNewArrival = document.getElementById('isNewArrival').checked;
+            const isBestSeller = document.getElementById('isBestSeller').checked;
+            const hasDiscount = document.getElementById('hasDiscount').checked;
+            const discountPercentage = document.getElementById('discountPercentage').value || '0';
+            const productImageFile = document.getElementById('productImage').files[0];
+
+            // Gather features (array of strings)
+            const currentFeatures = features; // features array holds strings
+
+            // Gather specifications (array of {specName: string, specValue: string})
+            const currentSpecifications = specifications.map(s => ({ specName: s.name, specValue: s.value }));
+
+            // Gather certifications (array of numbers/longs - the IDs)
+            const currentCertificationIds = certifications.map(c => parseInt(c.id));
+
+            // Gather weight options (array of {weightValue: string, price: number, packagingPhoto: string/url})
+            // Note: Backend expects weightValue as String, price as BigDecimal (number ok), packagingPhoto as String URL
+            // We need to handle existing options (with IDs/URLs) vs newly added ones (no ID/URL yet)
+            // This simplistic approach just sends the current state, potentially losing existing IDs/URLs if not handled carefully in startEditProduct
+            const currentWeightOptions = weightOptions.map(wo => ({
+                id: wo.id, // Send ID if editing an existing option
+                weightValue: String(wo.weightValue), // Convert to string
+                price: wo.price,
+                // Send existing URL if available, otherwise null. Don't send the File object.
+                packagingPhoto: wo.packagingPhotoUrl || null 
+                // NOTE: New photos for new/existing options need separate handling (e.g., dedicated endpoint per option)
+            }));
+
+            // Gather nutritional info (object or null)
+            let currentNutritionalInfo = null;
+            if (hasNutritionalInfo) {
+                currentNutritionalInfo = {
+                    servingSize: document.getElementById('servingSize').value || null,
+                    servingsPerContainer: document.getElementById('servingsPerContainer').value || null,
+                    calories: document.getElementById('calories').value || null,
+                    totalFat: document.getElementById('totalFat').value || null,
+                    saturatedFat: document.getElementById('saturatedFat').value || null,
+                    transFat: document.getElementById('transFat').value || null,
+                    cholesterol: document.getElementById('cholesterol').value || null,
+                    sodium: document.getElementById('sodium').value || null,
+                    totalCarbohydrates: document.getElementById('totalCarbohydrates').value || null,
+                    dietaryFiber: document.getElementById('dietaryFiber').value || null,
+                    sugars: document.getElementById('sugars').value || null,
+                    protein: document.getElementById('protein').value || null,
+                    vitaminA: document.getElementById('vitaminA').value || null,
+                    vitaminC: document.getElementById('vitaminC').value || null,
+                    calcium: document.getElementById('calcium').value || null,
+                    iron: document.getElementById('iron').value || null,
+                    // Match DTO field names used in backend convertToProductDTO/updateProductDetails
+                    fat: document.getElementById('totalFat').value || null, // Assuming DTO uses 'fat'
+                    carbohydrates: document.getElementById('totalCarbohydrates').value || null, // Assuming DTO uses 'carbohydrates'
+                    fiber: document.getElementById('dietaryFiber').value || null, // Assuming DTO uses 'fiber'
+                    sugar: document.getElementById('sugars').value || null // Assuming DTO uses 'sugar'
+                };
+            }
+
 
             try {
-                const response = await fetch(`${API_URL}/products`, {
-                    method: 'POST',
-                    body: formData
+                let response;
+                let method;
+                let url;
+                let body;
+                let headers = {};
+                let successMessage;
+
+                if (editingProductId) {
+                    // --- Prepare for PUT (Update) ---
+                    method = 'PUT';
+                    url = `${API_URL}/products/${editingProductId}`;
+                    successMessage = 'Product updated successfully!';
+                    headers['Content-Type'] = 'application/json';
+
+                    const productDTO = {
+                        name: name,
+                        description: description,
+                        // imageUrl: null, // Don't update image via DTO for now
+                        categoryId: categoryId ? parseInt(categoryId) : null,
+                        isNewArrival: isNewArrival,
+                        isBestSeller: isBestSeller,
+                        pricePerKg: parseFloat(pricePerKg),
+                        hasDiscount: hasDiscount,
+                        discountPercentage: hasDiscount ? parseInt(discountPercentage) : 0,
+                        inventory: parseInt(inventory),
+                        certificationIds: currentCertificationIds,
+                        features: currentFeatures,
+                        specifications: currentSpecifications,
+                        nutritionalInfo: currentNutritionalInfo,
+                        weightOptions: currentWeightOptions
+                    };
+                    body = JSON.stringify(productDTO);
+                    
+                    // TODO: Handle image update separately if productImageFile exists
+                    if (productImageFile) {
+                        console.warn("Image file selected during edit, but image update via this PUT is not implemented yet.");
+                        // Potential future: call a separate image upload endpoint here
+                        // e.g., await uploadProductImage(editingProductId, productImageFile);
+                    }
+                    
+                    // TODO: Handle new/updated weight option photos separately if needed
+                    // This requires checking `weightOptions` array for File objects and calling separate endpoints.
+
+                } else {
+                    // --- Prepare for POST (Create) ---
+                    method = 'POST';
+                    url = `${API_URL}/products`;
+                    successMessage = 'Product added successfully!';
+                    // Use FormData for POST to include the image
+                    const formData = new FormData();
+                    formData.append('name', name);
+                    formData.append('description', description);
+                    if (categoryId) formData.append('categoryId', categoryId);
+                    formData.append('pricePerKg', pricePerKg);
+                    formData.append('inventory', inventory);
+                    formData.append('isNewArrival', isNewArrival);
+                    formData.append('isBestSeller', isBestSeller);
+                    formData.append('hasDiscount', hasDiscount);
+                    formData.append('discountPercentage', discountPercentage);
+                    if (productImageFile) {
+                         formData.append('image', productImageFile);
+                    }
+                    body = formData;
+                    // Let browser set Content-Type for FormData
+                    delete headers['Content-Type']; 
+                    
+                    // NOTE: The initial POST endpoint /api/products only saves the core product fields and image.
+                    // Related entities (features, specs, etc.) are added via separate POST calls AFTER the product is created.
+                }
+
+                // Use fetchWithAuth for product creation or update
+                response = await fetchWithAuth(url, {
+                    method: method,
+                    headers: headers, // Pass headers (esp. Content-Type for PUT)
+                    body: body 
                 });
                 
                 if (!response.ok) {
-                    const errorData = await response.text();
-                    throw new Error(errorData);
-                }
-                
-                const savedProduct = await response.json();
-                
-                // Add features
-                for (const feature of features) {
-                    await fetch(`${API_URL}/products/${savedProduct.id}/features`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `feature=${encodeURIComponent(feature)}`
-                    });
-                }
-
-                // Add specifications
-                for (const spec of specifications) {
-                    await fetch(`${API_URL}/products/${savedProduct.id}/specifications`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `specName=${encodeURIComponent(spec.name)}&specValue=${encodeURIComponent(spec.value)}`
-                    });
-                }
-
-                // Add certifications
-                for (const cert of certifications) {
-                    await fetch(`${API_URL}/products/${savedProduct.id}/certifications/${cert.id}`, {
-                        method: 'POST'
-                    });
-                }
-
-                // Add weight options
-                for (const option of weightOptions) {
-                    const weightOptionFormData = new FormData();
-                    weightOptionFormData.append('weightValue', option.weightValue);
-                    weightOptionFormData.append('price', option.price);
-                    if (option.packagingPhoto) {
-                        weightOptionFormData.append('packagingImage', option.packagingPhoto);
-                    }
-                    
-                    const optionResponse = await fetch(`${API_URL}/products/${savedProduct.id}/weight-options`, {
-                        method: 'POST',
-                        body: weightOptionFormData
-                    });
-                    
-                    if (!optionResponse.ok) {
-                        throw new Error('Failed to save weight option');
+                    const errorData = await response.text(); // Read error as text
+                    console.error('Server Response Error:', errorData);
+                    try {
+                        const parsedError = JSON.parse(errorData); 
+                        throw new Error(parsedError.message || JSON.stringify(parsedError));
+                    } catch (parseError) {
+                        throw new Error(errorData || `HTTP error! status: ${response.status}`);
                     }
                 }
+                
+                const savedOrUpdatedProduct = await response.json();
+                const productIdToUpdate = editingProductId || savedOrUpdatedProduct.id;
 
-                // Add nutritional info if specified
-                if (hasNutritionalInfo) {
-                    const nutritionalInfo = {
-                        servingSize: document.getElementById('servingSize').value,
-                        servingsPerContainer: document.getElementById('servingsPerContainer').value,
-                        calories: document.getElementById('calories').value,
-                        totalFat: document.getElementById('totalFat').value,
-                        saturatedFat: document.getElementById('saturatedFat').value,
-                        transFat: document.getElementById('transFat').value,
-                        cholesterol: document.getElementById('cholesterol').value,
-                        sodium: document.getElementById('sodium').value,
-                        totalCarbohydrates: document.getElementById('totalCarbohydrates').value,
-                        dietaryFiber: document.getElementById('dietaryFiber').value,
-                        sugars: document.getElementById('sugars').value,
-                        protein: document.getElementById('protein').value,
-                        vitaminA: document.getElementById('vitaminA').value,
-                        vitaminC: document.getElementById('vitaminC').value,
-                        calcium: document.getElementById('calcium').value,
-                        iron: document.getElementById('iron').value
-                    };
+                // --- Logic for Adding/Updating Related Entities ---
+                // This is complex and differs between POST (Create) and PUT (Update)
+
+                if (method === 'POST') {
+                    // POST (Create): Saved core product, now add related entities via separate calls
+                    console.log("Adding related entities for new product:", productIdToUpdate);
                     
-                    const nutritionalInfoResponse = await fetch(`${API_URL}/products/${savedProduct.id}/nutritional-info`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(nutritionalInfo)
-                    });
-                    
-                    if (!nutritionalInfoResponse.ok) {
-                        const errorData = await nutritionalInfoResponse.text();
-                        console.error('Failed to save nutritional info:', errorData);
-                        throw new Error('Failed to save nutritional information');
+                    // Add features
+                    for (const feature of currentFeatures) {
+                        await fetchWithAuth(`${API_URL}/products/${productIdToUpdate}/features`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+                            body: `feature=${encodeURIComponent(feature)}`
+                        });
                     }
+                    
+                    // Add specifications
+                    for (const spec of currentSpecifications) {
+                        await fetchWithAuth(`${API_URL}/products/${productIdToUpdate}/specifications`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+                            body: `specName=${encodeURIComponent(spec.specName)}&specValue=${encodeURIComponent(spec.specValue)}`
+                        });
+                    }
+
+                    // Add certifications
+                    for (const certId of currentCertificationIds) {
+                        await fetchWithAuth(`${API_URL}/products/${productIdToUpdate}/certifications/${certId}`, {
+                            method: 'POST'
+                        });
+                    }
+
+                    // Add weight options (handle packaging photo upload)
+                    for (const option of weightOptions) { // Use original weightOptions array which might contain File objects
+                       const weightOptionFormData = new FormData();
+                       weightOptionFormData.append('weightValue', option.weightValue);
+                       weightOptionFormData.append('price', option.price);
+                       if (option.packagingPhoto instanceof File) {
+                           weightOptionFormData.append('packagingImage', option.packagingPhoto);
+                       }
+                       
+                       const optionResponse = await fetchWithAuth(`${API_URL}/products/${productIdToUpdate}/weight-options`, {
+                           method: 'POST',
+                           body: weightOptionFormData
+                       });
+                       if (!optionResponse.ok) console.error('Failed to save new weight option');
+                    }
+
+                    // Add nutritional info if specified
+                    if (currentNutritionalInfo) {
+                         const nutritionalInfoResponse = await fetchWithAuth(`${API_URL}/products/${productIdToUpdate}/nutritional-info`, {
+                            method: 'POST',
+                            body: JSON.stringify(currentNutritionalInfo)
+                        });
+                        if (!nutritionalInfoResponse.ok) {
+                            const errorData = await nutritionalInfoResponse.text();
+                            console.error('Failed to save nutritional info:', errorData);
+                            throw new Error('Failed to save nutritional information');
+                        }
+                    }
+                    
+                } else { // PUT (Update)
+                    // PUT: Backend's updateProductDetails handles related entities based on DTO.
+                    // However, we might need separate calls for things not handled by the DTO update,
+                    // like NEW weight option photos or deleting weight options that were removed in the UI.
+                    console.log("Product updated via PUT with DTO. Checking for additional actions needed.");
+                    
+                    // Example: Handling newly added photos for *existing* weight options
+                    // This requires more complex logic: iterate through `weightOptions` array,
+                    // find items with an `id` AND a `packagingPhoto` File object, then call a specific endpoint.
+                    // e.g., PUT /api/weight-options/{id}/image with the file.
+                    
+                    // Example: Handling deletion of weight options removed from the UI list.
+                    // Compare `initialWeightOptionIds` (need to store this when starting edit) 
+                    // with `currentWeightOptions.map(wo => wo.id)`. IDs present initially but not 
+                    // currently need to be deleted via DELETE /api/weight-options/{id}.
+                    
+                    console.warn("Weight option photo updates/deletions during edit are not fully implemented yet.");
                 }
 
-                // Reset form and arrays
-                document.getElementById('productForm').reset();
-                features = [];
-                specifications = [];
-                certifications = [];
-                weightOptions = [];
-                hasNutritionalInfo = false;
-                document.getElementById('nutritionalInfoForm').style.display = 'none';
-                updateFeaturesList();
-                updateSpecificationsList();
-                updateCertificationsList();
-                updateWeightOptionsList();
-                
-                loadProducts();
+                // Reset form and arrays only on success
+                resetProductForm(); 
+                loadProducts(); // Reload the product list
+                alert(successMessage); 
+
             } catch (error) {
-                console.error('Error adding product:', error);
-                alert('Error adding product: ' + error.message);
+                console.error(`Error ${editingProductId ? 'updating' : 'adding'} product:`, error);
+                alert(`Error ${editingProductId ? 'updating' : 'adding'} product: ${error.message}`);
             }
         });
 
@@ -910,11 +1217,10 @@
             };
 
             try {
-                await fetch(`${API_URL}/categories`, {
+                // Use fetchWithAuth
+                await fetchWithAuth(`${API_URL}/categories`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    // fetchWithAuth sets Content-Type
                     body: JSON.stringify(categoryData)
                 });
                 document.getElementById('categoryForm').reset();
@@ -928,7 +1234,8 @@
         async function deleteProduct(id) {
             if (confirm('Are you sure you want to delete this product?')) {
                 try {
-                    const response = await fetch(`${API_URL}/products/${id}`, {
+                    // Use fetchWithAuth
+                    const response = await fetchWithAuth(`${API_URL}/products/${id}`, {
                         method: 'DELETE'
                     });
                     
@@ -953,7 +1260,8 @@
         async function deleteCategory(id) {
             if (confirm('Are you sure you want to delete this category?')) {
                 try {
-                    const response = await fetch(`${API_URL}/categories/${id}`, {
+                    // Use fetchWithAuth
+                    const response = await fetchWithAuth(`${API_URL}/categories/${id}`, {
                         method: 'DELETE'
                     });
                     
@@ -978,7 +1286,8 @@
         async function deleteCertification(id) {
             if (confirm('Are you sure you want to delete this certification?')) {
                 try {
-                    const response = await fetch(`${API_URL}/certifications/${id}`, {
+                    // Use fetchWithAuth
+                    const response = await fetchWithAuth(`${API_URL}/certifications/${id}`, {
                         method: 'DELETE'
                     });
                     
@@ -1008,11 +1317,10 @@
             };
 
             try {
-                await fetch(`${API_URL}/certifications`, {
+                // Use fetchWithAuth
+                await fetchWithAuth(`${API_URL}/certifications`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    // fetchWithAuth sets Content-Type
                     body: JSON.stringify(certificationData)
                 });
                 document.getElementById('certificationForm').reset();

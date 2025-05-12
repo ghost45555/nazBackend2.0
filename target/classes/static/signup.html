@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Rice Products</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .signup-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background: none;
+            border-bottom: none;
+            text-align: center;
+            padding-top: 20px;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+        }
+        .alert {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="signup-container">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Sign Up</h3>
+                </div>
+                <div class="card-body">
+                    <form id="signupForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="firstName" name="firstName" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="lastName" name="lastName" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone">
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="Customer" selected>Customer</option>
+                                <option value="Product Manager">Product Manager</option>
+                                <option value="Order Manager">Order Manager</option>
+                                <option value="Admin" id="adminRoleOption" disabled>Admin (Requires username \'admin\')</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Sign Up</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p>Already have an account? <a href="login.html">Login</a></p>
+                    </div>
+                    <div class="alert alert-danger" id="errorAlert" role="alert"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const usernameInput = document.getElementById('username');
+        const adminRoleOption = document.getElementById('adminRoleOption');
+        const roleSelect = document.getElementById('role');
+
+        usernameInput.addEventListener('input', () => {
+            if (usernameInput.value === 'admin') {
+                adminRoleOption.disabled = false;
+                adminRoleOption.textContent = 'Admin'; // Update text when enabled
+            } else {
+                adminRoleOption.disabled = true;
+                adminRoleOption.textContent = 'Admin (Requires username \'admin\')'; // Reset text
+                // If admin was selected and username changes, revert selection
+                if (roleSelect.value === 'Admin') {
+                    roleSelect.value = 'Customer'; 
+                }
+            }
+        });
+
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+            
+            const userData = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: password,
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                phone: document.getElementById('phone').value,
+                role: document.getElementById('role').value
+            };
+            
+            try {
+                const response = await fetch('http://localhost:8080/api/auth/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Origin': window.location.origin
+                    },
+                    mode: 'cors',
+                    credentials: 'omit',
+                    body: JSON.stringify(userData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => null);
+                    const errorMessage = errorData?.message || errorData || `HTTP error! status: ${response.status}`;
+                    console.error('Signup error:', errorMessage);
+                    throw new Error(errorMessage);
+                }
+                
+                const data = await response.json();
+                console.log('Signup successful:', data);
+                
+                // Store the token
+                localStorage.setItem('token', data.token);
+                // Redirect to index page (which will handle auth check)
+                window.location.href = '/src/main/resources/static/index.html';
+            } catch (error) {
+                // Try to parse backend error message
+                let errorMessage = 'An error occurred. Please try again.';
+                try {
+                    const errorData = JSON.parse(error.message);
+                    if (errorData && errorData.message) {
+                        errorMessage = errorData.message;
+                        if (errorData.errors) {
+                            // Append field-specific errors if available
+                            errorMessage += ": " + errorData.errors;
+                        }
+                    } else if (error.message.includes("HTTP error!")) {
+                         errorMessage = error.message; // Keep the HTTP status error
+                    }
+                } catch (parseError) {
+                     // If parsing fails or it's not the expected format, use the original error message
+                     errorMessage = error.message || errorMessage;
+                }
+                console.error('Signup Error:', error);
+                showError(errorMessage);
+            }
+        });
+
+        function showError(message) {
+            const alert = document.getElementById('errorAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 

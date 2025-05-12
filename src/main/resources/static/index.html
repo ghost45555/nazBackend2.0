@@ -44,6 +44,15 @@
                     <li class="nav-item">
                         <a class="nav-link" href="product_management.html">Product Management</a>
                     </li>
+                    <li class="nav-item" id="authLinks">
+                        <a class="nav-link" href="login.html">Login</a>
+                    </li>
+                    <li class="nav-item" id="userInfo" style="display: none;">
+                        <span class="nav-link" id="username"></span>
+                    </li>
+                    <li class="nav-item" id="logoutLink" style="display: none;">
+                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -81,7 +90,7 @@
         // Function to load products
         async function loadProducts() {
             try {
-                const response = await fetch('/api/products');
+                const response = await fetch('http://localhost:8080/api/products');
                 const products = await response.json();
                 const container = document.getElementById('products-container');
                 
@@ -117,6 +126,47 @@
 
         // Load products when the page loads
         document.addEventListener('DOMContentLoaded', loadProducts);
+
+        // Check authentication status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            const authLinks = document.getElementById('authLinks');
+            const userInfo = document.getElementById('userInfo');
+            const logoutLink = document.getElementById('logoutLink');
+            
+            if (token) {
+                // User is logged in
+                authLinks.style.display = 'none';
+                userInfo.style.display = 'block';
+                logoutLink.style.display = 'block';
+                
+                // Fetch user info
+                fetch('http://localhost:8080/api/auth/user', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('username').textContent = data.username;
+                })
+                .catch(error => {
+                    console.error('Error fetching user info:', error);
+                    logout();
+                });
+            } else {
+                // User is not logged in
+                authLinks.style.display = 'block';
+                userInfo.style.display = 'none';
+                logoutLink.style.display = 'none';
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.reload();
+        }
     </script>
 </body>
 </html> 

@@ -9,4 +9,4 @@ import java.util.Optional;
 public interface ProductNutritionalInfoRepository extends JpaRepository<ProductNutritionalInfo, Long> {
     Optional<ProductNutritionalInfo> findByProductId(Long productId);
     void deleteByProductId(Long productId);
-} 
+}

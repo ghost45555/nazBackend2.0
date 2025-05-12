@@ -22,6 +22,14 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.productmanager.dto.ProductDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.HttpStatus;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("/api/products")
@@ -277,5 +285,69 @@ public class ProductController {
                         .contentType(MediaType.IMAGE_JPEG)
                         .body(option.getPackagingPhotoData()))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * GET /api/products/admin/{productId} : Get full product details for editing by admin.
+     *
+     * @param productId the ID of the product to retrieve.
+     * @return the ResponseEntity with status 200 (OK) and with body the productDTO, or with status 404 (Not Found).
+     */
+    @GetMapping("/admin/{productId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProductDTO> getProductDetailsForAdmin(@PathVariable Long productId) {
+        logger.info("REST request to get Product details for admin : {}", productId);
+        try {
+            ProductDTO productDTO = productService.getProductDetails(productId);
+            return ResponseEntity.ok(productDTO);
+        } catch (EntityNotFoundException e) {
+             logger.error("Product not found for id: {}", productId, e);
+             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error getting product details for id: {}", productId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build(); 
+        }
+    }
+
+    /**
+     * PUT /api/products/admin/{productId} : Updates an existing product.
+     *
+     * @param productId the ID of the product to update.
+     * @param productDTO the productDTO to update.
+     * @return the ResponseEntity with status 200 (OK) and with body the updated productDTO,
+     * or with status 400 (Bad Request) if the productDTO is not valid,
+     * or with status 404 (Not Found) if the product is not found,
+     * or with status 500 (Internal Server Error) if the product couldn't be updated.
+     */
+    @PutMapping("/admin/{productId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateProduct(@PathVariable Long productId, @Valid @RequestBody ProductDTO productDTO) {
+        logger.info("REST request to update Product : {} with data : {}", productId, productDTO);
+
+        // Basic validation: Check if ID in path matches ID in body (if present and not null)
+        if (productDTO.getId() != null && !productDTO.getId().equals(productId)) {
+            // Consider a more specific error response DTO
+            return ResponseEntity.badRequest().body("ID in path does not match ID in request body.");
+        }
+         // Ensure the DTO ID is set for the service layer if not already
+        if (productDTO.getId() == null) {
+            productDTO.setId(productId);
+        }
+
+        try {
+            ProductDTO updatedProduct = productService.updateProductDetails(productId, productDTO);
+            return ResponseEntity.ok(updatedProduct);
+        } catch (EntityNotFoundException e) {
+            logger.error("Cannot update product. Entity not found: {}", e.getMessage());
+            // Return 404 or a custom error response
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage()); 
+        } catch (IllegalArgumentException e) {
+             logger.error("Cannot update product. Invalid argument: {}", e.getMessage());
+             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error updating product with id {}: {}", productId, e.getMessage(), e);
+            // Consider a more specific error response DTO
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal error updating product.");
+        }
     }
 } 

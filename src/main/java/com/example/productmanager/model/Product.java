@@ -67,7 +67,7 @@ public class Product {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "product", fetch = FetchType.LAZY)
     @JsonIgnore
     @EqualsAndHashCode.Exclude
     private ProductNutritionalInfo nutritionalInfo;
