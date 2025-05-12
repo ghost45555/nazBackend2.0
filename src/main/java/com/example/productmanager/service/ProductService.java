@@ -250,8 +250,38 @@ public class ProductService {
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new RuntimeException("Product not found"));
         
-        nutritionalInfo.setProduct(product);
-        return nutritionalInfoRepository.save(nutritionalInfo);
+        // Check if there's an existing nutritional info for this product
+        Optional<ProductNutritionalInfo> existingInfo = nutritionalInfoRepository.findByProductId(productId);
+        
+        if (existingInfo.isPresent()) {
+            // Update existing record
+            ProductNutritionalInfo existing = existingInfo.get();
+            
+            // Copy properties from the incoming nutritionalInfo to the existing one
+            existing.setServingSize(nutritionalInfo.getServingSize());
+            existing.setServingsPerContainer(nutritionalInfo.getServingsPerContainer());
+            existing.setCalories(nutritionalInfo.getCalories());
+            existing.setTotalFat(nutritionalInfo.getTotalFat());
+            existing.setSaturatedFat(nutritionalInfo.getSaturatedFat());
+            existing.setTransFat(nutritionalInfo.getTransFat());
+            existing.setCholesterol(nutritionalInfo.getCholesterol());
+            existing.setSodium(nutritionalInfo.getSodium());
+            existing.setTotalCarbohydrates(nutritionalInfo.getTotalCarbohydrates());
+            existing.setDietaryFiber(nutritionalInfo.getDietaryFiber());
+            existing.setSugars(nutritionalInfo.getSugars());
+            existing.setProtein(nutritionalInfo.getProtein());
+            existing.setVitaminA(nutritionalInfo.getVitaminA());
+            existing.setVitaminC(nutritionalInfo.getVitaminC());
+            existing.setCalcium(nutritionalInfo.getCalcium());
+            existing.setIron(nutritionalInfo.getIron());
+            
+            return nutritionalInfoRepository.save(existing);
+        } else {
+            // Create new record
+            nutritionalInfo.setProduct(product);
+            nutritionalInfo.setProductId(productId); // Explicitly set the ID
+            return nutritionalInfoRepository.save(nutritionalInfo);
+        }
     }
 
     public void deleteProductNutritionalInfo(Long productId) {

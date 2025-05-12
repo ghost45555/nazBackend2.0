@@ -1,39 +1,39 @@
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\config\JacksonConfig.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\dto\NutritionalInfoDTO.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\config\SecurityConfig.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\security\JwtAuthenticationFilter.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\dto\ProductDTO.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\RoleRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\entity\Role.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\ProductFeatureRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\dto\SignupRequest.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\model\Certification.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\service\CertificationService.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\model\Product.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\ProductWeightOptionRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\dto\SpecificationDTO.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\controller\ProductController.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\model\ProductFeature.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\dto\LoginRequest.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\service\CategoryService.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\UserRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\ProductSpecificationRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\controller\CertificationController.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\service\CustomUserDetailsService.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\dto\JwtResponse.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\entity\User.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\ProductManagerApplication.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\util\PasswordGenerator.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\ProductRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\model\ProductNutritionalInfo.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\dto\WeightOptionDTO.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\CertificationRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\ProductNutritionalInfoRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\model\Category.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\model\ProductSpecification.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\model\ProductWeightOption.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\controller\AuthController.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\repository\CategoryRepository.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\security\JwtTokenProvider.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\controller\CategoryController.java
-D:\works\rice websites\testings\test spring boot backend\src\main\java\com\example\productmanager\service\ProductService.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\service\CategoryService.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\controller\CategoryController.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\model\ProductFeature.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\util\PasswordGenerator.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\config\SecurityConfig.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\controller\ProductController.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\model\Certification.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\dto\JwtResponse.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\ProductFeatureRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\ProductWeightOptionRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\dto\SpecificationDTO.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\ProductManagerApplication.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\UserRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\CertificationRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\CategoryRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\dto\ProductDTO.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\dto\SignupRequest.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\dto\LoginRequest.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\security\JwtAuthenticationFilter.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\model\Product.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\security\JwtTokenProvider.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\ProductRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\ProductNutritionalInfoRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\dto\NutritionalInfoDTO.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\controller\CertificationController.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\model\Category.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\entity\User.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\dto\WeightOptionDTO.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\model\ProductNutritionalInfo.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\ProductSpecificationRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\service\CertificationService.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\config\JacksonConfig.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\repository\RoleRepository.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\controller\AuthController.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\model\ProductSpecification.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\model\ProductWeightOption.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\service\ProductService.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\entity\Role.java
+D:\works\rice websites\testings\2\backendnaz\src\main\java\com\example\productmanager\service\CustomUserDetailsService.java

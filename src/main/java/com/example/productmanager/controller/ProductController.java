@@ -216,12 +216,24 @@ public class ProductController {
             @PathVariable Long productId,
             @RequestBody ProductNutritionalInfo nutritionalInfo) {
         try {
+            logger.info("Saving nutritional info for product ID: {}", productId);
+            logger.debug("Nutritional info data: {}", nutritionalInfo);
+            
             ProductNutritionalInfo savedInfo = productService.saveProductNutritionalInfo(productId, nutritionalInfo);
             return ResponseEntity.ok(savedInfo);
         } catch (Exception e) {
             logger.error("Error saving nutritional info for product: " + productId, e);
-            return ResponseEntity.internalServerError()
-                .body(Map.of("error", "Error saving nutritional info: " + e.getMessage()));
+            
+            String detailedMessage = e.getMessage();
+            if (e.getCause() != null) {
+                detailedMessage += " - Cause: " + e.getCause().getMessage();
+            }
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "error", "Error saving nutritional info: " + detailedMessage,
+                    "timestamp", LocalDateTime.now().toString()
+                ));
         }
     }
 
