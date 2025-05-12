@@ -3,997 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Manager</title>
+    <title>Rice Products</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .product-image {
-            max-width: 200px;
-            max-height: 200px;
-            object-fit: contain;
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .welcome-section {
+            padding: 100px 0;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+        .product-section {
+            padding: 50px 0;
         }
         .product-card {
+            transition: transform 0.2s;
             margin-bottom: 20px;
         }
-        .nav-tabs {
-            margin-bottom: 20px;
-        }
-        .feature-list, .spec-list, .cert-list {
-            margin-top: 10px;
-        }
-        .feature-item, .spec-item, .cert-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px;
-            border-bottom: 1px solid #eee;
-        }
-        .weight-option-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px;
-            border-bottom: 1px solid #eee;
-        }
-        .weight-options-list, .nutritional-info {
-            margin-top: 10px;
+        .product-card:hover {
+            transform: translateY(-5px);
         }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1 class="mb-4">Product Manager</h1>
-        
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="products-tab" data-bs-toggle="tab" data-bs-target="#products" type="button" role="tab">Products</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" type="button" role="tab">Categories</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="certifications-tab" data-bs-toggle="tab" data-bs-target="#certifications" type="button" role="tab">Certifications</button>
-            </li>
-        </ul>
-
-        <!-- Tab Content -->
-        <div class="tab-content" id="myTabContent">
-            <!-- Products Tab -->
-            <div class="tab-pane fade show active" id="products" role="tabpanel">
-                <!-- Add Product Form -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Add New Product</h5>
-                        <form id="productForm">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="name" class="form-label">Product Name</label>
-                                    <input type="text" class="form-control" id="name" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="categoryId" class="form-label">Category</label>
-                                    <select class="form-control" id="categoryId" required>
-                                        <!-- Categories will be loaded here -->
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="description" class="form-label">Description</label>
-                                <textarea class="form-control" id="description" rows="3"></textarea>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="pricePerKg" class="form-label">Price per KG</label>
-                                    <input type="number" class="form-control" id="pricePerKg" step="0.01" required>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="inventory" class="form-label">Inventory</label>
-                                    <input type="number" class="form-control" id="inventory" required>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="productImage" class="form-label">Product Image</label>
-                                    <input type="file" class="form-control" id="productImage" accept="image/*">
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="isNewArrival">
-                                        <label class="form-check-label" for="isNewArrival">New Arrival</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="isBestSeller">
-                                        <label class="form-check-label" for="isBestSeller">Best Seller</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="hasDiscount">
-                                        <label class="form-check-label" for="hasDiscount">Has Discount</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <label for="discountPercentage" class="form-label">Discount %</label>
-                                    <input type="number" class="form-control" id="discountPercentage" min="0" max="100">
-                                </div>
-                            </div>
-
-                            <!-- Features Section -->
-                            <div class="mb-3">
-                                <label class="form-label">Features</label>
-                                <div class="input-group mb-2">
-                                    <input type="text" class="form-control" id="featureInput" placeholder="Add a feature">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="addFeature()">Add</button>
-                                </div>
-                                <div id="featuresList" class="feature-list"></div>
-                            </div>
-
-                            <!-- Specifications Section -->
-                            <div class="mb-3">
-                                <label class="form-label">Specifications</label>
-                                <div class="row mb-2">
-                                    <div class="col-md-5">
-                                        <input type="text" class="form-control" id="specNameInput" placeholder="Specification name">
-                                    </div>
-                                    <div class="col-md-5">
-                                        <input type="text" class="form-control" id="specValueInput" placeholder="Specification value">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button class="btn btn-outline-secondary w-100" type="button" onclick="addSpecification()">Add</button>
-                                    </div>
-                                </div>
-                                <div id="specificationsList" class="spec-list"></div>
-                            </div>
-
-                            <!-- Weight Options Section -->
-                            <div class="mb-3">
-                                <label class="form-label">Weight Options</label>
-                                <div class="row mb-2">
-                                    <div class="col-md-3">
-                                        <input type="number" class="form-control" id="weightValueInput" placeholder="Weight in grams">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <input type="number" class="form-control" id="weightPriceInput" step="0.01" placeholder="Price">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <input type="file" class="form-control" id="packagingPhotoInput" accept="image/*">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button class="btn btn-outline-secondary w-100" type="button" onclick="addWeightOption()">Add</button>
-                                    </div>
-                                </div>
-                                <div id="weightOptionsList" class="weight-options-list"></div>
-                            </div>
-
-                            <!-- Nutritional Info Section -->
-                            <div class="mb-3">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" id="hasNutritionalInfo" onchange="toggleNutritionalInfoForm()">
-                                    <label class="form-check-label" for="hasNutritionalInfo">Add Nutritional Information</label>
-                                </div>
-                                
-                                <div id="nutritionalInfoForm" style="display: none;">
-                                    <div class="row mb-2">
-                                        <div class="col-md-6">
-                                            <label for="servingSize" class="form-label">Serving Size</label>
-                                            <input type="text" class="form-control" id="servingSize">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="servingsPerContainer" class="form-label">Servings Per Container</label>
-                                            <input type="text" class="form-control" id="servingsPerContainer">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row">
-                                        <div class="col-md-3 mb-2">
-                                            <label for="calories" class="form-label">Calories</label>
-                                            <input type="text" class="form-control" id="calories">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="totalFat" class="form-label">Total Fat</label>
-                                            <input type="text" class="form-control" id="totalFat">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="saturatedFat" class="form-label">Saturated Fat</label>
-                                            <input type="text" class="form-control" id="saturatedFat">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="transFat" class="form-label">Trans Fat</label>
-                                            <input type="text" class="form-control" id="transFat">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row">
-                                        <div class="col-md-3 mb-2">
-                                            <label for="cholesterol" class="form-label">Cholesterol</label>
-                                            <input type="text" class="form-control" id="cholesterol">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="sodium" class="form-label">Sodium</label>
-                                            <input type="text" class="form-control" id="sodium">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="totalCarbohydrates" class="form-label">Total Carbohydrates</label>
-                                            <input type="text" class="form-control" id="totalCarbohydrates">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="dietaryFiber" class="form-label">Dietary Fiber</label>
-                                            <input type="text" class="form-control" id="dietaryFiber">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row">
-                                        <div class="col-md-3 mb-2">
-                                            <label for="sugars" class="form-label">Sugars</label>
-                                            <input type="text" class="form-control" id="sugars">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="protein" class="form-label">Protein</label>
-                                            <input type="text" class="form-control" id="protein">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="vitaminA" class="form-label">Vitamin A</label>
-                                            <input type="text" class="form-control" id="vitaminA">
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="vitaminC" class="form-label">Vitamin C</label>
-                                            <input type="text" class="form-control" id="vitaminC">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row">
-                                        <div class="col-md-6 mb-2">
-                                            <label for="calcium" class="form-label">Calcium</label>
-                                            <input type="text" class="form-control" id="calcium">
-                                        </div>
-                                        <div class="col-md-6 mb-2">
-                                            <label for="iron" class="form-label">Iron</label>
-                                            <input type="text" class="form-control" id="iron">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Certifications Section -->
-                            <div class="mb-3">
-                                <label class="form-label">Certifications</label>
-                                <div class="input-group mb-2">
-                                    <select class="form-control" id="certificationSelect">
-                                        <!-- Certifications will be loaded here -->
-                                    </select>
-                                    <button class="btn btn-outline-secondary" type="button" onclick="addCertification()">Add</button>
-                                </div>
-                                <div id="selectedProductCertificationsList" class="cert-list"></div>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary">Add Product</button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Products List -->
-                <div id="productsList" class="row"></div>
-            </div>
-
-            <!-- Categories Tab -->
-            <div class="tab-pane fade" id="categories" role="tabpanel">
-                <!-- Add Category Form -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Add New Category</h5>
-                        <form id="categoryForm">
-                            <div class="mb-3">
-                                <label for="categoryName" class="form-label">Category Name</label>
-                                <input type="text" class="form-control" id="categoryName" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="categoryDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="categoryDescription" rows="3"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Add Category</button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Categories List -->
-                <div id="categoriesList" class="row"></div>
-            </div>
-
-            <!-- Certifications Tab -->
-            <div class="tab-pane fade" id="certifications" role="tabpanel">
-                <!-- Add Certification Form -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Add New Certification</h5>
-                        <form id="certificationForm">
-                            <div class="mb-3">
-                                <label for="certificationName" class="form-label">Certification Name</label>
-                                <input type="text" class="form-control" id="certificationName" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="certificationDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="certificationDescription" rows="3"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Add Certification</button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Certifications List -->
-                <div id="allCertificationsDisplayList" class="row"></div>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">Rice Products</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="all_products.html">All Products</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="product_management.html">Product Management</a>
+                    </li>
+                </ul>
             </div>
         </div>
-    </div>
+    </nav>
+
+    <!-- Welcome Section -->
+    <section id="home" class="welcome-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1 class="display-4 mb-4">Welcome to Rice Products</h1>
+                    <p class="lead mb-4">Discover our premium selection of rice products, carefully sourced and packaged for your convenience.</p>
+                    <a href="all_products.html" class="btn btn-primary btn-lg">View Products</a>
+                </div>
+                <div class="col-lg-6">
+                    <img src="https://images.unsplash.com/photo-1586201375761-83865001e31c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                         alt="Rice Products" class="img-fluid rounded shadow">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section id="products" class="product-section">
+        <div class="container">
+            <h2 class="text-center mb-5">Our Products</h2>
+            <div class="row" id="products-container">
+                <!-- Products will be loaded here dynamically -->
+            </div>
+        </div>
+    </section>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const API_URL = 'http://localhost:8080/api';
-        const BACKEND_URL = 'http://localhost:8080';
-
-        // Arrays to store temporary data
-        let features = [];
-        let specifications = [];
-        let certifications = [];
-        let weightOptions = [];
-        let hasNutritionalInfo = false;
-
-        // Load all products
+        // Function to load products
         async function loadProducts() {
             try {
-                const response = await fetch(`${API_URL}/products`);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to load products');
-                }
+                const response = await fetch('/api/products');
                 const products = await response.json();
-                if (!Array.isArray(products)) {
-                    throw new Error('Invalid response format: products is not an array');
-                }
-                const productsList = document.getElementById('productsList');
-                productsList.innerHTML = '';
-
-                for (const product of products) {
-                    try {
-                        // Fetch additional product details
-                        const [featuresResponse, specificationsResponse, certificationsResponse, 
-                              nutritionalInfoResponse, weightOptionsResponse] = await Promise.all([
-                            fetch(`${API_URL}/products/${product.id}/features`),
-                            fetch(`${API_URL}/products/${product.id}/specifications`),
-                            fetch(`${API_URL}/products/${product.id}/certifications`),
-                            fetch(`${API_URL}/products/${product.id}/nutritional-info`),
-                            fetch(`${API_URL}/products/${product.id}/weight-options`)
-                        ]);
-                        
-                        const features = await featuresResponse.json();
-                        const specifications = await specificationsResponse.json();
-                        const certifications = await certificationsResponse.json();
-                        
-                        let nutritionalInfo = null;
-                        if (nutritionalInfoResponse.ok) {
-                            nutritionalInfo = await nutritionalInfoResponse.json();
-                        }
-                        
-                        const weightOptions = await weightOptionsResponse.json();
-                        
-                        // Create product card with all details
-                        const productCard = document.createElement('div');
-                        productCard.className = 'col-md-4';
-                        
-                        // Create feature HTML
-                        let featuresHtml = '';
-                        if (features && features.length > 0) {
-                            featuresHtml = `
-                                <div class="mt-3">
-                                    <h6>Features:</h6>
-                                    <ul class="list-group">
-                                        ${features.map(feature => 
-                                            `<li class="list-group-item">${feature.feature}</li>`
-                                        ).join('')}
-                                    </ul>
-                                </div>
-                            `;
-                        }
-                        
-                        // Create specifications HTML
-                        let specificationsHtml = '';
-                        if (specifications && specifications.length > 0) {
-                            specificationsHtml = `
-                                <div class="mt-3">
-                                    <h6>Specifications:</h6>
-                                    <ul class="list-group">
-                                        ${specifications.map(spec => 
-                                            `<li class="list-group-item"><strong>${spec.specName}:</strong> ${spec.specValue}</li>`
-                                        ).join('')}
-                                    </ul>
-                                </div>
-                            `;
-                        }
-                        
-                        // Create certifications HTML
-                        let certificationsHtml = '';
-                        if (certifications && certifications.length > 0) {
-                            certificationsHtml = `
-                                <div class="mt-3">
-                                    <h6>Certifications:</h6>
-                                    <div>
-                                        ${certifications.map(cert => 
-                                            `<span class="badge bg-info me-1">${cert.name}</span>`
-                                        ).join('')}
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        // Create weight options HTML
-                        let weightOptionsHtml = '';
-                        if (weightOptions && weightOptions.length > 0) {
-                            weightOptionsHtml = `
-                                <div class="mt-3">
-                                    <h6>Weight Options:</h6>
-                                    <div class="row">
-                                        ${weightOptions.map(option => {
-                                            return `
-                                            <div class="col-md-6 mb-2">
-                                                <div class="card">
-                                                    ${option.packagingPhoto ? 
-                                                        `<img src="${BACKEND_URL}${option.packagingPhoto}" class="card-img-top" style="max-height: 100px; object-fit: contain;" alt="Packaging">` : 
-                                                        ''}
-                                                    <div class="card-body">
-                                                        <p class="card-text">
-                                                            <strong>Weight:</strong> ${option.weightValue}g<br>
-                                                            <strong>Price:</strong> $${option.price}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        // Create nutritional info HTML
-                        let nutritionalInfoHtml = '';
-                        if (nutritionalInfo) {
-                            nutritionalInfoHtml = `
-                                <div class="mt-3">
-                                    <h6>Nutritional Information:</h6>
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <p class="mb-1"><strong>Serving Size:</strong> ${nutritionalInfo.servingSize || 'N/A'}</p>
-                                            <p class="mb-1"><strong>Servings Per Container:</strong> ${nutritionalInfo.servingsPerContainer || 'N/A'}</p>
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <p class="mb-1"><strong>Calories:</strong> ${nutritionalInfo.calories || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Total Fat:</strong> ${nutritionalInfo.totalFat || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Saturated Fat:</strong> ${nutritionalInfo.saturatedFat || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Trans Fat:</strong> ${nutritionalInfo.transFat || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Cholesterol:</strong> ${nutritionalInfo.cholesterol || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Sodium:</strong> ${nutritionalInfo.sodium || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Total Carbohydrates:</strong> ${nutritionalInfo.totalCarbohydrates || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Dietary Fiber:</strong> ${nutritionalInfo.dietaryFiber || 'N/A'}</p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <p class="mb-1"><strong>Sugars:</strong> ${nutritionalInfo.sugars || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Protein:</strong> ${nutritionalInfo.protein || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Vitamin A:</strong> ${nutritionalInfo.vitaminA || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Vitamin C:</strong> ${nutritionalInfo.vitaminC || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Calcium:</strong> ${nutritionalInfo.calcium || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Iron:</strong> ${nutritionalInfo.iron || 'N/A'}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        productCard.innerHTML = `
+                const container = document.getElementById('products-container');
+                
+                products.forEach(product => {
+                    const productCard = `
+                        <div class="col-md-4">
                             <div class="card product-card">
-                                <img src="${BACKEND_URL}/api/products/${product.id}/image" class="card-img-top product-image" alt="${product.name}">
+                                ${product.imageUrl ? 
+                                    `<img src="${product.imageUrl}" class="card-img-top" alt="${product.name}">` :
+                                    `<div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                                        <span class="text-muted">No image available</span>
+                                    </div>`
+                                }
                                 <div class="card-body">
                                     <h5 class="card-title">${product.name}</h5>
-                                    <p class="card-text">${product.description || ''}</p>
+                                    <p class="card-text">${product.description || 'No description available'}</p>
                                     <p class="card-text">
-                                        <strong>Price:</strong> $${product.pricePerKg}/kg<br>
-                                        <strong>Inventory:</strong> ${product.inventory}<br>
-                                        ${product.hasDiscount ? `<strong>Discount:</strong> ${product.discountPercentage}%<br>` : ''}
-                                        ${product.isNewArrival ? '<span class="badge bg-success">New Arrival</span> ' : ''}
-                                        ${product.isBestSeller ? '<span class="badge bg-warning">Best Seller</span>' : ''}
+                                        <strong>Price:</strong> $${product.pricePerKg}/kg
+                                        ${product.hasDiscount ? 
+                                            `<br><span class="text-danger">${product.discountPercentage}% OFF!</span>` : 
+                                            ''}
                                     </p>
-                                    ${featuresHtml}
-                                    ${specificationsHtml}
-                                    ${certificationsHtml}
-                                    ${weightOptionsHtml}
-                                    ${nutritionalInfoHtml}
-                                    <div class="mt-3">
-                                        <button class="btn btn-danger" onclick="deleteProduct(${product.id})">Delete</button>
-                                    </div>
                                 </div>
                             </div>
-                        `;
-                        productsList.appendChild(productCard);
-                    } catch (error) {
-                        console.error(`Error loading details for product ${product.id}:`, error);
-                    }
-                }
+                        </div>
+                    `;
+                    container.innerHTML += productCard;
+                });
             } catch (error) {
                 console.error('Error loading products:', error);
-                const productsList = document.getElementById('productsList');
-                productsList.innerHTML = `
-                    <div class="col-12">
-                        <div class="alert alert-danger" role="alert">
-                            Error loading products: ${error.message}
-                        </div>
-                    </div>
-                `;
             }
         }
 
-        // Load all categories
-        async function loadCategories() {
-            try {
-                const response = await fetch(`${API_URL}/categories`);
-                const categories = await response.json();
-                const categoriesList = document.getElementById('categoriesList');
-                const categorySelect = document.getElementById('categoryId');
-                
-                // Update categories list
-                categoriesList.innerHTML = '';
-                categorySelect.innerHTML = '<option value="">Select Category</option>';
-                
-                categories.forEach(category => {
-                    // Add to select dropdown
-                    const option = document.createElement('option');
-                    option.value = category.id;
-                    option.textContent = category.name;
-                    categorySelect.appendChild(option);
-
-                    // Add to categories list
-                    const categoryCard = document.createElement('div');
-                    categoryCard.className = 'col-md-4 mb-3';
-                    categoryCard.innerHTML = `
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">${category.name}</h5>
-                                <p class="card-text">${category.description || ''}</p>
-                                <button class="btn btn-danger" onclick="deleteCategory(${category.id})">Delete</button>
-                            </div>
-                        </div>
-                    `;
-                    categoriesList.appendChild(categoryCard);
-                });
-            } catch (error) {
-                console.error('Error loading categories:', error);
-            }
-        }
-
-        // Load all certifications
-        async function loadCertifications() {
-            try {
-                const response = await fetch(`${API_URL}/certifications`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const allCerts = await response.json();
-                const allCertificationsDisplay = document.getElementById('allCertificationsDisplayList');
-                const certificationSelectDropdown = document.getElementById('certificationSelect');
-                
-                // Update certifications display list in the Certifications Tab
-                allCertificationsDisplay.innerHTML = ''; 
-                certificationSelectDropdown.innerHTML = '<option value="">Select Certification</option>';
-                
-                allCerts.forEach(cert => {
-                    // Add to select dropdown in Product Form
-                    const option = document.createElement('option');
-                    option.value = cert.id;
-                    option.textContent = cert.name;
-                    certificationSelectDropdown.appendChild(option);
-
-                    // Add to certifications display list in Certifications Tab
-                    const certCard = document.createElement('div');
-                    certCard.className = 'col-md-4 mb-3';
-                    certCard.innerHTML = `
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">${cert.name}</h5>
-                                <p class="card-text">${cert.description || ''}</p>
-                                <button class="btn btn-danger" onclick="deleteCertification(${cert.id})">Delete</button>
-                            </div>
-                        </div>
-                    `;
-                    allCertificationsDisplay.appendChild(certCard);
-                });
-            } catch (error) {
-                console.error('Error loading certifications:', error);
-                alert('Error loading certifications. Please try again later.');
-            }
-        }
-
-        // Feature management
-        function addFeature() {
-            const featureInput = document.getElementById('featureInput');
-            const feature = featureInput.value.trim();
-            if (feature) {
-                features.push(feature);
-                updateFeaturesList();
-                featureInput.value = '';
-            }
-        }
-
-        function removeFeature(index) {
-            features.splice(index, 1);
-            updateFeaturesList();
-        }
-
-        function updateFeaturesList() {
-            const featuresList = document.getElementById('featuresList');
-            featuresList.innerHTML = features.map((feature, index) => `
-                <div class="feature-item">
-                    <span>${feature}</span>
-                    <button class="btn btn-sm btn-danger" onclick="removeFeature(${index})">Remove</button>
-                </div>
-            `).join('');
-        }
-
-        // Specification management
-        function addSpecification() {
-            const specName = document.getElementById('specNameInput').value.trim();
-            const specValue = document.getElementById('specValueInput').value.trim();
-            if (specName && specValue) {
-                specifications.push({ name: specName, value: specValue });
-                updateSpecificationsList();
-                document.getElementById('specNameInput').value = '';
-                document.getElementById('specValueInput').value = '';
-            }
-        }
-
-        function removeSpecification(index) {
-            specifications.splice(index, 1);
-            updateSpecificationsList();
-        }
-
-        function updateSpecificationsList() {
-            const specificationsList = document.getElementById('specificationsList');
-            specificationsList.innerHTML = specifications.map((spec, index) => `
-                <div class="spec-item">
-                    <span><strong>${spec.name}:</strong> ${spec.value}</span>
-                    <button class="btn btn-sm btn-danger" onclick="removeSpecification(${index})">Remove</button>
-                </div>
-            `).join('');
-        }
-
-        // Certification management
-        function addCertification() {
-            const select = document.getElementById('certificationSelect');
-            const certId = select.value;
-            const certName = select.options[select.selectedIndex].text;
-            if (certId && !certifications.some(cert => cert.id === certId)) {
-                certifications.push({ id: certId, name: certName });
-                updateCertificationsList();
-            }
-        }
-
-        function removeCertification(index) {
-            certifications.splice(index, 1);
-            updateCertificationsList();
-        }
-
-        function updateCertificationsList() {
-            const selectedProductCertList = document.getElementById('selectedProductCertificationsList');
-            selectedProductCertList.innerHTML = certifications.map((cert, index) => {
-                return `
-                    <div class="cert-item">
-                        <span>${cert.name}</span>
-                        <button class="btn btn-sm btn-danger" onclick="removeCertification(${index})">Remove</button>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // Weight Options management
-        function addWeightOption() {
-            const weightValue = document.getElementById('weightValueInput').value.trim();
-            const price = document.getElementById('weightPriceInput').value.trim();
-            const packagingPhoto = document.getElementById('packagingPhotoInput').files[0];
-            
-            if (weightValue && price) {
-                weightOptions.push({
-                    weightValue: parseInt(weightValue),
-                    price: parseFloat(price),
-                    packagingPhoto: packagingPhoto
-                });
-                updateWeightOptionsList();
-                document.getElementById('weightValueInput').value = '';
-                document.getElementById('weightPriceInput').value = '';
-                document.getElementById('packagingPhotoInput').value = '';
-            }
-        }
-
-        function removeWeightOption(index) {
-            weightOptions.splice(index, 1);
-            updateWeightOptionsList();
-        }
-
-        function updateWeightOptionsList() {
-            const weightOptionsList = document.getElementById('weightOptionsList');
-            weightOptionsList.innerHTML = weightOptions.map((option, index) => `
-                <div class="weight-option-item">
-                    <span><strong>${option.weightValue}g:</strong> $${option.price} ${option.packagingPhoto ? '(with packaging photo)' : ''}</span>
-                    <button class="btn btn-sm btn-danger" onclick="removeWeightOption(${index})">Remove</button>
-                </div>
-            `).join('');
-        }
-
-        // Toggle nutritional info form
-        function toggleNutritionalInfoForm() {
-            const hasNutritionalInfoCheckbox = document.getElementById('hasNutritionalInfo');
-            const nutritionalInfoForm = document.getElementById('nutritionalInfoForm');
-            
-            hasNutritionalInfo = hasNutritionalInfoCheckbox.checked;
-            nutritionalInfoForm.style.display = hasNutritionalInfo ? 'block' : 'none';
-        }
-
-        // Add new product
-        document.getElementById('productForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData();
-            formData.append('name', document.getElementById('name').value);
-            formData.append('description', document.getElementById('description').value);
-            formData.append('categoryId', document.getElementById('categoryId').value);
-            formData.append('pricePerKg', document.getElementById('pricePerKg').value);
-            formData.append('inventory', document.getElementById('inventory').value);
-            formData.append('isNewArrival', document.getElementById('isNewArrival').checked);
-            formData.append('isBestSeller', document.getElementById('isBestSeller').checked);
-            formData.append('hasDiscount', document.getElementById('hasDiscount').checked);
-            formData.append('discountPercentage', document.getElementById('discountPercentage').value || '0');
-            formData.append('image', document.getElementById('productImage').files[0]);
-
-            try {
-                const response = await fetch(`${API_URL}/products`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.text();
-                    throw new Error(errorData);
-                }
-                
-                const savedProduct = await response.json();
-                
-                // Add features
-                for (const feature of features) {
-                    await fetch(`${API_URL}/products/${savedProduct.id}/features`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `feature=${encodeURIComponent(feature)}`
-                    });
-                }
-
-                // Add specifications
-                for (const spec of specifications) {
-                    await fetch(`${API_URL}/products/${savedProduct.id}/specifications`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `specName=${encodeURIComponent(spec.name)}&specValue=${encodeURIComponent(spec.value)}`
-                    });
-                }
-
-                // Add certifications
-                for (const cert of certifications) {
-                    await fetch(`${API_URL}/products/${savedProduct.id}/certifications/${cert.id}`, {
-                        method: 'POST'
-                    });
-                }
-
-                // Add weight options
-                for (const option of weightOptions) {
-                    const weightOptionFormData = new FormData();
-                    weightOptionFormData.append('weightValue', option.weightValue);
-                    weightOptionFormData.append('price', option.price);
-                    if (option.packagingPhoto) {
-                        weightOptionFormData.append('packagingImage', option.packagingPhoto);
-                    }
-                    
-                    const optionResponse = await fetch(`${API_URL}/products/${savedProduct.id}/weight-options`, {
-                        method: 'POST',
-                        body: weightOptionFormData
-                    });
-                    
-                    if (!optionResponse.ok) {
-                        throw new Error('Failed to save weight option');
-                    }
-                }
-
-                // Add nutritional info if specified
-                if (hasNutritionalInfo) {
-                    const nutritionalInfo = {
-                        servingSize: document.getElementById('servingSize').value,
-                        servingsPerContainer: document.getElementById('servingsPerContainer').value,
-                        calories: document.getElementById('calories').value,
-                        totalFat: document.getElementById('totalFat').value,
-                        saturatedFat: document.getElementById('saturatedFat').value,
-                        transFat: document.getElementById('transFat').value,
-                        cholesterol: document.getElementById('cholesterol').value,
-                        sodium: document.getElementById('sodium').value,
-                        totalCarbohydrates: document.getElementById('totalCarbohydrates').value,
-                        dietaryFiber: document.getElementById('dietaryFiber').value,
-                        sugars: document.getElementById('sugars').value,
-                        protein: document.getElementById('protein').value,
-                        vitaminA: document.getElementById('vitaminA').value,
-                        vitaminC: document.getElementById('vitaminC').value,
-                        calcium: document.getElementById('calcium').value,
-                        iron: document.getElementById('iron').value
-                    };
-                    
-                    const nutritionalInfoResponse = await fetch(`${API_URL}/products/${savedProduct.id}/nutritional-info`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(nutritionalInfo)
-                    });
-                    
-                    if (!nutritionalInfoResponse.ok) {
-                        const errorData = await nutritionalInfoResponse.text();
-                        console.error('Failed to save nutritional info:', errorData);
-                        throw new Error('Failed to save nutritional information');
-                    }
-                }
-
-                // Reset form and arrays
-                document.getElementById('productForm').reset();
-                features = [];
-                specifications = [];
-                certifications = [];
-                weightOptions = [];
-                hasNutritionalInfo = false;
-                document.getElementById('nutritionalInfoForm').style.display = 'none';
-                updateFeaturesList();
-                updateSpecificationsList();
-                updateCertificationsList();
-                updateWeightOptionsList();
-                
-                loadProducts();
-            } catch (error) {
-                console.error('Error adding product:', error);
-                alert('Error adding product: ' + error.message);
-            }
-        });
-
-        // Add new category
-        document.getElementById('categoryForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const categoryData = {
-                name: document.getElementById('categoryName').value,
-                description: document.getElementById('categoryDescription').value
-            };
-
-            try {
-                await fetch(`${API_URL}/categories`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(categoryData)
-                });
-                document.getElementById('categoryForm').reset();
-                loadCategories();
-            } catch (error) {
-                console.error('Error adding category:', error);
-            }
-        });
-
-        // Delete product
-        async function deleteProduct(id) {
-            if (confirm('Are you sure you want to delete this product?')) {
-                try {
-                    const response = await fetch(`${API_URL}/products/${id}`, {
-                        method: 'DELETE'
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.text();
-                        throw new Error(errorData || 'Failed to delete product');
-                    }
-                    
-                    // Show success message
-                    alert('Product deleted successfully');
-                    
-                    // Reload the products list
-                    await loadProducts();
-                } catch (error) {
-                    console.error('Error deleting product:', error);
-                    alert('Error deleting product: ' + error.message);
-                }
-            }
-        }
-
-        // Delete category
-        async function deleteCategory(id) {
-            if (confirm('Are you sure you want to delete this category?')) {
-                try {
-                    const response = await fetch(`${API_URL}/categories/${id}`, {
-                        method: 'DELETE'
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.text();
-                        throw new Error(errorData || 'Failed to delete category');
-                    }
-                    
-                    // Show success message
-                    alert('Category deleted successfully');
-                    
-                    // Reload the categories list
-                    await loadCategories();
-                } catch (error) {
-                    console.error('Error deleting category:', error);
-                    alert('Error deleting category: ' + error.message);
-                }
-            }
-        }
-
-        // Delete certification
-        async function deleteCertification(id) {
-            if (confirm('Are you sure you want to delete this certification?')) {
-                try {
-                    const response = await fetch(`${API_URL}/certifications/${id}`, {
-                        method: 'DELETE'
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.text();
-                        throw new Error(errorData || 'Failed to delete certification');
-                    }
-                    
-                    // Show success message
-                    alert('Certification deleted successfully');
-                    
-                    // Reload the certifications list
-                    await loadCertifications();
-                } catch (error) {
-                    console.error('Error deleting certification:', error);
-                    alert('Error deleting certification: ' + error.message);
-                }
-            }
-        }
-
-        // Add new certification
-        document.getElementById('certificationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const certificationData = {
-                name: document.getElementById('certificationName').value,
-                description: document.getElementById('certificationDescription').value
-            };
-
-            try {
-                await fetch(`${API_URL}/certifications`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(certificationData)
-                });
-                document.getElementById('certificationForm').reset();
-                loadCertifications();
-            } catch (error) {
-                console.error('Error adding certification:', error);
-            }
-        });
-
-        // Load initial data
-        loadProducts();
-        loadCategories();
-        loadCertifications();
+        // Load products when the page loads
+        document.addEventListener('DOMContentLoaded', loadProducts);
     </script>
 </body>
 </html> 

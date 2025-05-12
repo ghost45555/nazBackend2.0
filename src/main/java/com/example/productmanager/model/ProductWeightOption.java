@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Data
@@ -16,7 +16,7 @@ public class ProductWeightOption {
 
     @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)
-    @JsonBackReference("product-weightOptions")
+    @JsonIgnoreProperties({"weightOptions"})
     private Product product;
 
     @Column(name = "weight_value", nullable = false)

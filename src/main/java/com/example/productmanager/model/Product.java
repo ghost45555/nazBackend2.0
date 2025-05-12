@@ -1,7 +1,6 @@
 package com.example.productmanager.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -11,9 +10,14 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
-@Data
+@Getter
+@Setter
 @Table(name = "products")
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 public class Product {
@@ -63,6 +67,16 @@ public class Product {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    @EqualsAndHashCode.Exclude
+    private ProductNutritionalInfo nutritionalInfo;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"product"})
+    @EqualsAndHashCode.Exclude
+    private Set<ProductWeightOption> weightOptions = new HashSet<>();
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "product_certifications",
@@ -70,23 +84,18 @@ public class Product {
         inverseJoinColumns = @JoinColumn(name = "certification_id")
     )
     @JsonIgnoreProperties({"products"})
+    @EqualsAndHashCode.Exclude
     private Set<Certification> certifications = new HashSet<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonManagedReference("product-features")
+    @JsonIgnoreProperties({"product"})
+    @EqualsAndHashCode.Exclude
     private Set<ProductFeature> features = new HashSet<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonManagedReference("product-specifications")
+    @JsonIgnoreProperties({"product"})
+    @EqualsAndHashCode.Exclude
     private Set<ProductSpecification> specifications = new HashSet<>();
-
-    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonManagedReference("product-nutritionalInfo")
-    private ProductNutritionalInfo nutritionalInfo;
-
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonManagedReference("product-weightOptions")
-    private Set<ProductWeightOption> weightOptions = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {
@@ -97,5 +106,29 @@ public class Product {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Product product = (Product) o;
+        return Objects.equals(id, product.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return "Product{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", pricePerKg=" + pricePerKg +
+                ", inventory=" + inventory +
+                '}';
     }
 } 

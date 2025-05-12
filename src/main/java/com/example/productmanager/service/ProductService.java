@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.hibernate.Hibernate;
 
 @Service
 public class ProductService {
@@ -38,10 +39,36 @@ public class ProductService {
     @Autowired
     private ProductWeightOptionRepository weightOptionRepository;
 
+    @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
         try {
             logger.info("Retrieving all products from repository");
             List<Product> products = productRepository.findAll();
+            
+            // Initialize all lazy-loaded collections to prevent LazyInitializationException
+            for (Product product : products) {
+                try {
+                    // Initialize category
+                    if (product.getCategory() != null) {
+                        Hibernate.initialize(product.getCategory());
+                    }
+                    
+                    // Initialize nutritional info
+                    if (product.getNutritionalInfo() != null) {
+                        Hibernate.initialize(product.getNutritionalInfo());
+                    }
+                    
+                    // Initialize collections
+                    Hibernate.initialize(product.getFeatures());
+                    Hibernate.initialize(product.getSpecifications());
+                    Hibernate.initialize(product.getWeightOptions());
+                    Hibernate.initialize(product.getCertifications());
+                    
+                } catch (Exception e) {
+                    logger.warn("Error initializing product {}: {}", product.getId(), e.getMessage());
+                }
+            }
+            
             logger.info("Successfully retrieved {} products", products.size());
             return products;
         } catch (Exception e) {
@@ -202,39 +229,8 @@ public class ProductService {
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new RuntimeException("Product not found"));
         
-        // Check if nutritional info already exists for this product
-        ProductNutritionalInfo existingInfo = nutritionalInfoRepository.findByProductId(productId).orElse(null);
-        if (existingInfo != null) {
-            // Update existing record
-            existingInfo.setServingSize(nutritionalInfo.getServingSize());
-            existingInfo.setServingsPerContainer(nutritionalInfo.getServingsPerContainer());
-            existingInfo.setCalories(nutritionalInfo.getCalories());
-            existingInfo.setTotalFat(nutritionalInfo.getTotalFat());
-            existingInfo.setSaturatedFat(nutritionalInfo.getSaturatedFat());
-            existingInfo.setTransFat(nutritionalInfo.getTransFat());
-            existingInfo.setCholesterol(nutritionalInfo.getCholesterol());
-            existingInfo.setSodium(nutritionalInfo.getSodium());
-            existingInfo.setTotalCarbohydrates(nutritionalInfo.getTotalCarbohydrates());
-            existingInfo.setDietaryFiber(nutritionalInfo.getDietaryFiber());
-            existingInfo.setSugars(nutritionalInfo.getSugars());
-            existingInfo.setProtein(nutritionalInfo.getProtein());
-            existingInfo.setVitaminA(nutritionalInfo.getVitaminA());
-            existingInfo.setVitaminC(nutritionalInfo.getVitaminC());
-            existingInfo.setCalcium(nutritionalInfo.getCalcium());
-            existingInfo.setIron(nutritionalInfo.getIron());
-            return nutritionalInfoRepository.save(existingInfo);
-        } else {
-            // Create new record
-            // Set the product association on the nutritionalInfo side
-            nutritionalInfo.setProduct(product);
-            // Set the nutritionalInfo association on the product side
-            product.setNutritionalInfo(nutritionalInfo);
-            // Save the product, which should cascade to save the nutritionalInfo
-            // due to @OneToOne(cascade = CascadeType.ALL) on Product.nutritionalInfo
-            // and @MapsId on ProductNutritionalInfo.product
-            Product savedProduct = productRepository.save(product);
-            return savedProduct.getNutritionalInfo();
-        }
+        nutritionalInfo.setProduct(product);
+        return nutritionalInfoRepository.save(nutritionalInfo);
     }
 
     public void deleteProductNutritionalInfo(Long productId) {

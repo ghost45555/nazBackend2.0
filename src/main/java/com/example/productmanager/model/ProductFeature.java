@@ -2,7 +2,7 @@ package com.example.productmanager.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Data
@@ -14,7 +14,7 @@ public class ProductFeature {
 
     @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)
-    @JsonBackReference("product-features")
+    @JsonIgnoreProperties({"features"})
     private Product product;
 
     @Column(nullable = false, columnDefinition = "TEXT")

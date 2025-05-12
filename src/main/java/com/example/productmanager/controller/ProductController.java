@@ -46,10 +46,15 @@ public class ProductController {
             return ResponseEntity.ok(products);
         } catch (Exception e) {
             logger.error("Error getting products: {}", e.getMessage(), e);
+            String errorMessage = e.getMessage();
+            if (e.getCause() != null) {
+                errorMessage += " - Cause: " + e.getCause().getMessage();
+            }
             return ResponseEntity.status(500)
                 .body(Map.of(
                     "error", "Error retrieving products",
-                    "message", e.getMessage(),
+                    "message", errorMessage,
+                    "type", e.getClass().getName(),
                     "timestamp", LocalDateTime.now().toString()
                 ));
         }
@@ -208,7 +213,7 @@ public class ProductController {
         } catch (Exception e) {
             logger.error("Error saving nutritional info for product: " + productId, e);
             return ResponseEntity.internalServerError()
-                .body("Error saving nutritional info: " + e.getMessage());
+                .body(Map.of("error", "Error saving nutritional info: " + e.getMessage()));
         }
     }
 
