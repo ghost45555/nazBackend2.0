@@ -235,10 +235,12 @@
         let userData = null;
         let ordersList = [];
         let cart = [];
+        let lastOrderUpdate = null; // Track last order update time
 
         // Constants
         const API_URL = 'http://localhost:8080/api';
         const orderDetailsModal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+        const POLL_INTERVAL = 30000; // Poll every 30 seconds
         
         // DOM Elements
         const ordersListContainer = document.getElementById('ordersList');
@@ -274,8 +276,9 @@
                 // Show welcome message
                 userWelcome.textContent = `Welcome, ${userData.firstName || userData.username || 'Customer'}`;
                 
-                // Load orders
+                // Load orders and start polling
                 loadOrders();
+                startOrderPolling();
             } catch (error) {
                 console.error('Error parsing user data:', error);
                 handleNotLoggedIn();
@@ -362,7 +365,10 @@
             
             ordersList.forEach(order => {
                 const orderDate = new Date(order.createdAt).toLocaleDateString();
-                const statusClass = getStatusClass(order.status);
+                const statusClass = getStatusClass(order.statusName);
+                const items = order.items || order.orderItems || []; // Safely handle undefined items
+                
+                console.log('Rendering order:', order.id, 'Status:', order.statusName); // Debug log
                 
                 const orderCard = document.createElement('div');
                 orderCard.className = 'order-card';
@@ -372,21 +378,21 @@
                             <h5 class="mb-0">Order #${order.id}</h5>
                             <small class="text-muted">${orderDate}</small>
                         </div>
-                        <span class="badge status-badge ${statusClass}">${order.status || 'Processing'}</span>
+                        <span class="badge status-badge ${statusClass}">${order.statusName || 'Processing'}</span>
                     </div>
                     <div class="order-body">
                         <div class="order-items">
-                            ${renderOrderItems(order.items, 2)}
+                            ${renderOrderItems(items, 2)}
                         </div>
-                        ${order.items.length > 2 ? 
+                        ${items.length > 2 ? 
                             `<div class="text-center mt-2">
-                                <small class="text-muted">+${order.items.length - 2} more items</small>
+                                <small class="text-muted">+${items.length - 2} more items</small>
                             </div>` : ''}
                         
-                        ${renderOrderTracking(order.status)}
+                        ${renderOrderTracking(order.statusName)}
                     </div>
                     <div class="order-footer d-flex justify-content-between align-items-center">
-                        <div>Total: <strong>$${order.total.toFixed(2)}</strong></div>
+                        <div>Total: <strong>$${(order.total || 0).toFixed(2)}</strong></div>
                         <button class="btn btn-outline-primary btn-sm" onclick="viewOrderDetails(${order.id})">
                             View Details
                         </button>
@@ -399,7 +405,7 @@
         
         // Render Order Items (limited number)
         function renderOrderItems(items, limit) {
-            if (!items || items.length === 0) {
+            if (!items || !Array.isArray(items) || items.length === 0) {
                 return '<p class="text-muted">No items</p>';
             }
             
@@ -407,16 +413,24 @@
             const itemsToShow = items.slice(0, limit);
             
             itemsToShow.forEach(item => {
+                if (!item) return; // Skip invalid items
+                
+                const productName = item.productName || 'Unknown Product';
+                const price = item.price || 0;
+                const quantity = item.quantity || 0;
+                const weight = item.weight || 0;
+                const imageUrl = item.productImage || 'https://via.placeholder.com/60';
+                
                 html += `
                     <div class="order-item">
-                        <img src="${item.productImage || 'https://via.placeholder.com/60'}" alt="${item.productName}" class="order-item-image">
+                        <img src="${imageUrl}" alt="${productName}" class="order-item-image">
                         <div class="order-item-details">
                             <div class="d-flex justify-content-between">
-                                <h6 class="mb-0">${item.productName}</h6>
-                                <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                                <h6 class="mb-0">${productName}</h6>
+                                <span>$${(price * quantity).toFixed(2)}</span>
                             </div>
-                            <small class="text-muted">${item.weight}g</small>
-                            <div class="mt-1">Qty: ${item.quantity}</div>
+                            <small class="text-muted">${weight}g</small>
+                            <div class="mt-1">Qty: ${quantity}</div>
                         </div>
                     </div>
                 `;
@@ -427,6 +441,8 @@
         
         // Render Order Tracking
         function renderOrderTracking(status) {
+            console.log('Rendering tracking for status:', status); // Debug log
+            
             const steps = [
                 { id: 'processing', label: 'Processing', icon: 'bi-box' },
                 { id: 'shipped', label: 'Shipped', icon: 'bi-truck' },
@@ -440,7 +456,6 @@
             } else if (status === 'Delivered') {
                 currentStepIndex = 2;
             } else if (status === 'Cancelled') {
-                // If cancelled, show special tracking with an X
                 return `
                     <div class="order-tracking mt-3">
                         <div class="tracking-step">
@@ -520,7 +535,7 @@
                             <h6>Order Information</h6>
                             <p class="mb-1">Order #${order.id}</p>
                             <p class="mb-1">Date: ${new Date(order.createdAt).toLocaleDateString()}</p>
-                            <p class="mb-1">Status: <span class="badge ${getStatusClass(order.status)}">${order.status || 'Processing'}</span></p>
+                            <p class="mb-1">Status: <span class="badge ${getStatusClass(order.statusName)}">${order.statusName || 'Processing'}</span></p>
                             <p class="mb-1">Payment Method: ${order.paymentMethod || 'N/A'}</p>
                         </div>
                         <div class="col-md-6">
@@ -578,29 +593,36 @@
         
         // Render Order Items for Table
         function renderOrderItemsTable(items) {
-            if (!items || items.length === 0) {
+            if (!items || !Array.isArray(items) || items.length === 0) {
                 return '<tr><td colspan="4" class="text-center">No items</td></tr>';
             }
             
             let html = '';
             
             items.forEach(item => {
-                const totalPrice = item.price * item.quantity;
+                if (!item) return; // Skip invalid items
+                
+                const productName = item.productName || 'Unknown Product';
+                const price = item.price || 0;
+                const quantity = item.quantity || 0;
+                const weight = item.weight || 0;
+                const imageUrl = item.productImage || 'https://via.placeholder.com/40';
+                const totalPrice = price * quantity;
                 
                 html += `
                     <tr>
                         <td>
                             <div class="d-flex align-items-center">
-                                <img src="${item.productImage || 'https://via.placeholder.com/40'}" alt="${item.productName}" 
+                                <img src="${imageUrl}" alt="${productName}" 
                                     style="width: 40px; height: 40px; object-fit: cover; margin-right: 10px;">
                                 <div>
-                                    <div>${item.productName}</div>
-                                    <small class="text-muted">${item.weight}g</small>
+                                    <div>${productName}</div>
+                                    <small class="text-muted">${weight}g</small>
                                 </div>
                             </div>
                         </td>
-                        <td>$${item.price.toFixed(2)}</td>
-                        <td>${item.quantity}</td>
+                        <td>$${price.toFixed(2)}</td>
+                        <td>${quantity}</td>
                         <td class="text-end">$${totalPrice.toFixed(2)}</td>
                     </tr>
                 `;
@@ -624,6 +646,110 @@
         
         // Make viewOrderDetails function globally accessible
         window.viewOrderDetails = viewOrderDetails;
+
+        // Start polling for order updates
+        function startOrderPolling() {
+            setInterval(async () => {
+                if (isLoggedIn) {
+                    await checkOrderUpdates();
+                }
+            }, POLL_INTERVAL);
+        }
+        
+        // Check for order updates
+        async function checkOrderUpdates() {
+            try {
+                const response = await fetch(`${API_URL}/orders/customer`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to check order updates');
+                }
+                
+                const updatedOrders = await response.json();
+                
+                // Check if any orders have been updated
+                let hasUpdates = false;
+                let statusChanges = [];
+                
+                // Compare each order's status
+                updatedOrders.forEach(newOrder => {
+                    const oldOrder = ordersList.find(o => o.id === newOrder.id);
+                    if (!oldOrder) {
+                        // New order
+                        hasUpdates = true;
+                    } else if (oldOrder.statusName !== newOrder.statusName) {
+                        // Status changed
+                        hasUpdates = true;
+                        statusChanges.push({
+                            orderId: newOrder.id,
+                            oldStatus: oldOrder.statusName,
+                            newStatus: newOrder.statusName
+                        });
+                    }
+                });
+                
+                // Check for removed orders
+                if (ordersList.length !== updatedOrders.length) {
+                    hasUpdates = true;
+                }
+                
+                if (hasUpdates) {
+                    console.log('Order updates detected:', statusChanges);
+                    ordersList = updatedOrders;
+                    renderOrders();
+                    
+                    // Show notification if there are status changes
+                    if (statusChanges.length > 0) {
+                        showStatusUpdateNotification(statusChanges);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking order updates:', error);
+            }
+        }
+        
+        // Show status update notification
+        function showStatusUpdateNotification(changes) {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.zIndex = '1050';
+            
+            changes.forEach(change => {
+                const toast = document.createElement('div');
+                toast.className = 'toast align-items-center text-white bg-primary border-0';
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
+                toast.setAttribute('aria-atomic', 'true');
+                
+                toast.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Order #${change.orderId} status updated to ${change.newStatus}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                `;
+                
+                toastContainer.appendChild(toast);
+                document.body.appendChild(toastContainer);
+                
+                const bsToast = new bootstrap.Toast(toast);
+                bsToast.show();
+                
+                // Remove toast after it's hidden
+                toast.addEventListener('hidden.bs.toast', () => {
+                    toast.remove();
+                    if (toastContainer.children.length === 0) {
+                        toastContainer.remove();
+                    }
+                });
+            });
+        }
     </script>
 </body>
 </html> 
