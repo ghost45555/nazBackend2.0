@@ -46,7 +46,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/customer-signup", "/api/auth/customer-login").permitAll()
                 .requestMatchers("/", "/index.html", "/login.html", "/signup.html", "/all_products.html", "/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
@@ -54,6 +54,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/orders/{id}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/orders/**").authenticated()
                 .requestMatchers("/product_management.html").hasRole("ADMIN")
                 .requestMatchers("/api/categories/**").hasRole("ADMIN")
                 .requestMatchers("/api/certifications/**").hasRole("ADMIN")

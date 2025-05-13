@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders - Rice Products</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .content-section {
+            padding-top: 80px;
+        }
+        .order-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .order-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .order-header {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+            border-radius: 8px 8px 0 0;
+        }
+        .order-body {
+            padding: 15px;
+        }
+        .order-footer {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #ddd;
+            border-radius: 0 0 8px 8px;
+        }
+        .status-badge {
+            font-size: 0.9rem;
+            padding: 5px 10px;
+        }
+        .status-processing {
+            background-color: #cff4fc;
+            color: #055160;
+        }
+        .status-shipped {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        .status-delivered {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+        .order-item {
+            display: flex;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .order-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .order-item-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            margin-right: 15px;
+            border-radius: 4px;
+        }
+        .order-item-details {
+            flex-grow: 1;
+        }
+        .order-tracking {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .tracking-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        .tracking-step:not(:last-child):after {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background-color: #ddd;
+            z-index: 1;
+        }
+        .tracking-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #f8f9fa;
+            border: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            position: relative;
+            z-index: 2;
+        }
+        .tracking-circle.active {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: white;
+        }
+        .tracking-circle.completed {
+            background-color: #198754;
+            border-color: #198754;
+            color: white;
+        }
+        .tracking-label {
+            font-size: 0.8rem;
+        }
+        .empty-orders {
+            text-align: center;
+            padding: 50px 0;
+        }
+        .empty-orders i {
+            font-size: 4rem;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+        .login-prompt {
+            text-align: center;
+            padding: 50px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="../index.html">Rice Products</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="products.html">All Products</a>
+                    </li>
+                    <li class="nav-item" id="loginLink" style="display:none;">
+                        <a class="nav-link" href="login.html">Login</a>
+                    </li>
+                    <li class="nav-item" id="logoutLink" style="display:none;">
+                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
+                    </li>
+                    <li class="nav-item" id="accountLink" style="display:none;">
+                        <a class="nav-link" href="my-account.html">
+                            <i class="bi bi-person"></i> My Account
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cart.html">
+                            <i class="bi bi-cart"></i> Cart <span id="cartCount" class="badge bg-primary">0</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Section -->
+    <div class="content-section">
+        <div class="container mt-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>My Orders</h1>
+                <div>
+                    <span id="userWelcome" class="text-muted"></span>
+                </div>
+            </div>
+
+            <!-- Login Prompt (shown when not logged in) -->
+            <div id="loginPrompt" class="login-prompt" style="display:none;">
+                <i class="bi bi-lock" style="font-size: 4rem; color: #ddd; margin-bottom: 20px;"></i>
+                <h3>Please Log In</h3>
+                <p class="mb-4">You need to log in to view your orders</p>
+                <a href="login.html" class="btn btn-primary">Log In</a>
+                <div class="mt-3">
+                    <small>Don't have an account? <a href="signup.html">Sign up</a></small>
+                </div>
+            </div>
+
+            <!-- Empty Orders Message -->
+            <div id="emptyOrdersMessage" class="empty-orders" style="display:none;">
+                <i class="bi bi-inbox"></i>
+                <h3>No Orders Yet</h3>
+                <p class="mb-4">You haven't placed any orders yet</p>
+                <a href="products.html" class="btn btn-primary">Browse Products</a>
+            </div>
+
+            <!-- Orders List -->
+            <div id="ordersList">
+                <!-- Orders will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Order Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="orderDetailsContent">
+                    <!-- Order details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let isLoggedIn = false;
+        let userData = null;
+        let ordersList = [];
+        let cart = [];
+
+        // Constants
+        const API_URL = 'http://localhost:8080/api';
+        const orderDetailsModal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+        
+        // DOM Elements
+        const ordersListContainer = document.getElementById('ordersList');
+        const emptyOrdersMessage = document.getElementById('emptyOrdersMessage');
+        const loginPrompt = document.getElementById('loginPrompt');
+        const userWelcome = document.getElementById('userWelcome');
+        const cartCountElement = document.getElementById('cartCount');
+        const loginLinkElement = document.getElementById('loginLink');
+        const logoutLinkElement = document.getElementById('logoutLink');
+        const accountLinkElement = document.getElementById('accountLink');
+        const orderDetailsContent = document.getElementById('orderDetailsContent');
+        
+        // Check Login Status
+        function checkLoginStatus() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            if (!token || !user) {
+                handleNotLoggedIn();
+                return;
+            }
+            
+            try {
+                userData = JSON.parse(user);
+                isLoggedIn = true;
+                
+                // Update UI for logged in user
+                loginLinkElement.style.display = 'none';
+                logoutLinkElement.style.display = 'block';
+                accountLinkElement.style.display = 'block';
+                loginPrompt.style.display = 'none';
+                
+                // Show welcome message
+                userWelcome.textContent = `Welcome, ${userData.firstName || userData.username || 'Customer'}`;
+                
+                // Load orders
+                loadOrders();
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                handleNotLoggedIn();
+            }
+        }
+        
+        function handleNotLoggedIn() {
+            isLoggedIn = false;
+            userData = null;
+            
+            // Update UI for guest
+            loginLinkElement.style.display = 'block';
+            logoutLinkElement.style.display = 'none';
+            accountLinkElement.style.display = 'none';
+            
+            // Show login prompt
+            loginPrompt.style.display = 'block';
+            ordersListContainer.innerHTML = '';
+            emptyOrdersMessage.style.display = 'none';
+        }
+        
+        // Load Cart (for cart count)
+        function loadCart() {
+            const cartData = localStorage.getItem('cart');
+            if (cartData) {
+                cart = JSON.parse(cartData);
+                updateCartCount();
+            }
+        }
+        
+        // Update Cart Count
+        function updateCartCount() {
+            let count = 0;
+            cart.forEach(item => {
+                count += item.quantity;
+            });
+            cartCountElement.textContent = count;
+        }
+        
+        // Load Orders
+        async function loadOrders() {
+            if (!isLoggedIn) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/orders/customer`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load orders');
+                }
+                
+                ordersList = await response.json();
+                
+                if (ordersList.length === 0) {
+                    showEmptyOrdersMessage();
+                } else {
+                    renderOrders();
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                // If there's an error, show empty message
+                showEmptyOrdersMessage();
+            }
+        }
+        
+        // Show Empty Orders Message
+        function showEmptyOrdersMessage() {
+            emptyOrdersMessage.style.display = 'block';
+            ordersListContainer.innerHTML = '';
+        }
+        
+        // Render Orders
+        function renderOrders() {
+            ordersListContainer.innerHTML = '';
+            emptyOrdersMessage.style.display = 'none';
+            
+            // Sort orders by date (newest first)
+            ordersList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            ordersList.forEach(order => {
+                const orderDate = new Date(order.createdAt).toLocaleDateString();
+                const statusClass = getStatusClass(order.status);
+                
+                const orderCard = document.createElement('div');
+                orderCard.className = 'order-card';
+                orderCard.innerHTML = `
+                    <div class="order-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">Order #${order.id}</h5>
+                            <small class="text-muted">${orderDate}</small>
+                        </div>
+                        <span class="badge status-badge ${statusClass}">${order.status || 'Processing'}</span>
+                    </div>
+                    <div class="order-body">
+                        <div class="order-items">
+                            ${renderOrderItems(order.items, 2)}
+                        </div>
+                        ${order.items.length > 2 ? 
+                            `<div class="text-center mt-2">
+                                <small class="text-muted">+${order.items.length - 2} more items</small>
+                            </div>` : ''}
+                        
+                        ${renderOrderTracking(order.status)}
+                    </div>
+                    <div class="order-footer d-flex justify-content-between align-items-center">
+                        <div>Total: <strong>$${order.total.toFixed(2)}</strong></div>
+                        <button class="btn btn-outline-primary btn-sm" onclick="viewOrderDetails(${order.id})">
+                            View Details
+                        </button>
+                    </div>
+                `;
+                
+                ordersListContainer.appendChild(orderCard);
+            });
+        }
+        
+        // Render Order Items (limited number)
+        function renderOrderItems(items, limit) {
+            if (!items || items.length === 0) {
+                return '<p class="text-muted">No items</p>';
+            }
+            
+            let html = '';
+            const itemsToShow = items.slice(0, limit);
+            
+            itemsToShow.forEach(item => {
+                html += `
+                    <div class="order-item">
+                        <img src="${item.productImage || 'https://via.placeholder.com/60'}" alt="${item.productName}" class="order-item-image">
+                        <div class="order-item-details">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="mb-0">${item.productName}</h6>
+                                <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                            </div>
+                            <small class="text-muted">${item.weight}g</small>
+                            <div class="mt-1">Qty: ${item.quantity}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        // Render Order Tracking
+        function renderOrderTracking(status) {
+            const steps = [
+                { id: 'processing', label: 'Processing', icon: 'bi-box' },
+                { id: 'shipped', label: 'Shipped', icon: 'bi-truck' },
+                { id: 'delivered', label: 'Delivered', icon: 'bi-house-check' }
+            ];
+            
+            let currentStepIndex = 0;
+            
+            if (status === 'Shipped') {
+                currentStepIndex = 1;
+            } else if (status === 'Delivered') {
+                currentStepIndex = 2;
+            } else if (status === 'Cancelled') {
+                // If cancelled, show special tracking with an X
+                return `
+                    <div class="order-tracking mt-3">
+                        <div class="tracking-step">
+                            <div class="tracking-circle status-cancelled">
+                                <i class="bi bi-x-lg"></i>
+                            </div>
+                            <div class="tracking-label">Cancelled</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let html = '<div class="order-tracking mt-3">';
+            
+            steps.forEach((step, index) => {
+                let circleClass = 'tracking-circle';
+                
+                if (index < currentStepIndex) {
+                    circleClass += ' completed';
+                } else if (index === currentStepIndex) {
+                    circleClass += ' active';
+                }
+                
+                html += `
+                    <div class="tracking-step">
+                        <div class="${circleClass}">
+                            <i class="bi ${step.icon}"></i>
+                        </div>
+                        <div class="tracking-label">${step.label}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // Get Status Class for Badge
+        function getStatusClass(status) {
+            switch (status) {
+                case 'Processing':
+                    return 'status-processing';
+                case 'Shipped':
+                    return 'status-shipped';
+                case 'Delivered':
+                    return 'status-delivered';
+                case 'Cancelled':
+                    return 'status-cancelled';
+                default:
+                    return 'status-processing';
+            }
+        }
+        
+        // View Order Details
+        async function viewOrderDetails(orderId) {
+            if (!isLoggedIn) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/orders/${orderId}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load order details');
+                }
+                
+                const order = await response.json();
+                
+                // Render order details in modal
+                orderDetailsContent.innerHTML = `
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6>Order Information</h6>
+                            <p class="mb-1">Order #${order.id}</p>
+                            <p class="mb-1">Date: ${new Date(order.createdAt).toLocaleDateString()}</p>
+                            <p class="mb-1">Status: <span class="badge ${getStatusClass(order.status)}">${order.status || 'Processing'}</span></p>
+                            <p class="mb-1">Payment Method: ${order.paymentMethod || 'N/A'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Shipping Information</h6>
+                            <p class="mb-1">${order.firstName} ${order.lastName}</p>
+                            <p class="mb-1">${order.address}</p>
+                            <p class="mb-1">${order.apartment ? order.apartment + ', ' : ''}${order.city}, ${order.postalCode}</p>
+                            <p class="mb-1">Phone: ${order.phone}</p>
+                            <p class="mb-1">Email: ${order.email}</p>
+                        </div>
+                    </div>
+                    
+                    <h6>Order Items</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderOrderItemsTable(order.items)}
+                                <tr>
+                                    <td colspan="3" class="text-end">Subtotal</td>
+                                    <td class="text-end">$${order.subtotal.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end">Shipping</td>
+                                    <td class="text-end">$${order.shipping.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Total</strong></td>
+                                    <td class="text-end"><strong>$${order.total.toFixed(2)}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    ${order.orderNotes ? `
+                        <h6>Order Notes</h6>
+                        <p>${order.orderNotes}</p>
+                    ` : ''}
+                `;
+                
+                // Show the modal
+                orderDetailsModal.show();
+            } catch (error) {
+                console.error('Error loading order details:', error);
+                alert('Failed to load order details. Please try again.');
+            }
+        }
+        
+        // Render Order Items for Table
+        function renderOrderItemsTable(items) {
+            if (!items || items.length === 0) {
+                return '<tr><td colspan="4" class="text-center">No items</td></tr>';
+            }
+            
+            let html = '';
+            
+            items.forEach(item => {
+                const totalPrice = item.price * item.quantity;
+                
+                html += `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="${item.productImage || 'https://via.placeholder.com/40'}" alt="${item.productName}" 
+                                    style="width: 40px; height: 40px; object-fit: cover; margin-right: 10px;">
+                                <div>
+                                    <div>${item.productName}</div>
+                                    <small class="text-muted">${item.weight}g</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>$${item.price.toFixed(2)}</td>
+                        <td>${item.quantity}</td>
+                        <td class="text-end">$${totalPrice.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            return html;
+        }
+        
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '../index.html';
+        }
+        
+        // Event Listeners
+        window.addEventListener('DOMContentLoaded', () => {
+            checkLoginStatus();
+            loadCart();
+        });
+        
+        // Make viewOrderDetails function globally accessible
+        window.viewOrderDetails = viewOrderDetails;
+    </script>
+</body>
+</html> 

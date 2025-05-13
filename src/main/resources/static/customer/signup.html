@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Sign Up - Rice Products</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .signup-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background: none;
+            border-bottom: none;
+            text-align: center;
+            padding-top: 20px;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+        }
+        .alert {
+            display: none;
+            margin-top: 20px;
+        }
+        .brand-link {
+            display: block;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+        .order-tracking-callout {
+            margin-top: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="signup-container">
+            <a href="../index.html" class="brand-link">Rice Products</a>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Create Your Account</h3>
+                    <p class="text-muted small">Track orders and save your information for faster checkout</p>
+                </div>
+                <div class="card-body">
+                    <div id="orderInfoSection" class="order-tracking-callout" style="display: none;">
+                        <div class="mb-2">
+                            <i class="bi bi-box-seam text-primary" style="font-size: 2rem;"></i>
+                        </div>
+                        <h5>Linking Your Recent Order</h5>
+                        <p class="small">We'll connect your recent order to your new account</p>
+                        <div id="orderSummary" class="text-start small p-2 border rounded bg-light mb-3">
+                            <!-- Order info will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <form id="signupForm">
+                        <input type="hidden" id="orderId" name="orderId">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="firstName" name="firstName" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="lastName" name="lastName" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="form-text" id="emailHelp">Use the same email you used for your order</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone">
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="saveAddress" name="saveAddress" checked>
+                            <label class="form-check-label" for="saveAddress">Save my shipping address</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Account</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p>Already have an account? <a href="login.html">Login</a></p>
+                    </div>
+                    <div class="alert alert-danger" id="errorAlert" role="alert"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Constants
+        const API_URL = 'http://localhost:8080/api';
+        
+        // DOM Elements
+        const signupForm = document.getElementById('signupForm');
+        const errorAlert = document.getElementById('errorAlert');
+        const emailInput = document.getElementById('email');
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
+        const phoneInput = document.getElementById('phone');
+        const orderInfoSection = document.getElementById('orderInfoSection');
+        const orderSummary = document.getElementById('orderSummary');
+        const orderIdInput = document.getElementById('orderId');
+        
+        // Check for order info in URL parameters
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('order');
+            const email = urlParams.get('email');
+            
+            if (orderId && email) {
+                // Pre-fill the email field
+                emailInput.value = email;
+                orderIdInput.value = orderId;
+                
+                // Fetch order details to show
+                fetchOrderDetails(orderId, email);
+            }
+        });
+        
+        // Fetch order details
+        async function fetchOrderDetails(orderId, email) {
+            try {
+                const response = await fetch(`${API_URL}/orders/${orderId}?email=${encodeURIComponent(email)}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load order details');
+                }
+                
+                const order = await response.json();
+                
+                // Show order info section
+                orderInfoSection.style.display = 'block';
+                
+                // Pre-fill form fields from order
+                if (order.firstName) firstNameInput.value = order.firstName;
+                if (order.lastName) lastNameInput.value = order.lastName;
+                if (order.phone) phoneInput.value = order.phone;
+                
+                // Display order summary
+                orderSummary.innerHTML = `
+                    <strong>Order #${order.id}</strong><br>
+                    Date: ${new Date(order.createdAt).toLocaleDateString()}<br>
+                    Status: ${order.status || 'Processing'}<br>
+                    Items: ${order.items?.length || 0} items<br>
+                    Total: $${order.total?.toFixed(2) || '0.00'}
+                `;
+            } catch (error) {
+                console.error('Error fetching order:', error);
+                // If we can't load the order, just hide the section
+                orderInfoSection.style.display = 'none';
+            }
+        }
+        
+        // Handle form submission
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                showError('Passwords do not match');
+                return;
+            }
+            
+            // Create user data object
+            const userData = {
+                email: emailInput.value,
+                password: password,
+                firstName: firstNameInput.value,
+                lastName: lastNameInput.value,
+                phone: phoneInput.value,
+                saveAddress: document.getElementById('saveAddress').checked,
+                orderId: orderIdInput.value || null
+            };
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/customer-signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => null);
+                    throw new Error(errorData?.message || `HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Store the token and user data
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                
+                // Redirect to my-orders page
+                window.location.href = 'my-orders.html';
+            } catch (error) {
+                showError(error.message || 'An error occurred. Please try again.');
+            }
+        });
+        
+        // Show error message
+        function showError(message) {
+            errorAlert.textContent = message;
+            errorAlert.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 

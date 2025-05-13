@@ -21,13 +21,13 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String username;
     
     @Column(nullable = false, unique = true)
     private String email;
     
-    @Column(nullable = false)
+    @Column
     private String password;
     
     private String firstName;
@@ -84,5 +84,10 @@ public class User implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+    
+    @Override
+    public String getUsername() {
+        return username;
     }
 } 

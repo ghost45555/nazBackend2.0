@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart - Rice Products</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .content-section {
+            padding-top: 80px;
+        }
+        .cart-item {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .cart-item-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        .quantity-control {
+            display: flex;
+            align-items: center;
+        }
+        .quantity-control button {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+        }
+        .quantity-control input {
+            width: 50px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+            border-left: none;
+            border-right: none;
+            height: 32px;
+        }
+        .cart-summary {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .cart-total {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+        .empty-cart {
+            text-align: center;
+            padding: 50px 0;
+        }
+        .empty-cart i {
+            font-size: 4rem;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="../index.html">Rice Products</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="../index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../all_products.html">All Products</a>
+                    </li>
+                    <li class="nav-item" id="loginLink">
+                        <a class="nav-link" href="../login.html">Login</a>
+                    </li>
+                    <li class="nav-item" id="logoutLink" style="display:none;">
+                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="cart.html">
+                            <i class="bi bi-cart"></i> Cart <span id="cartCount" class="badge bg-primary">0</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Section -->
+    <div class="content-section">
+        <div class="container mt-5">
+            <h1 class="mb-4">Shopping Cart</h1>
+            
+            <!-- Empty Cart Message -->
+            <div id="emptyCartMessage" class="empty-cart" style="display:none;">
+                <i class="bi bi-cart-x"></i>
+                <h3>Your cart is empty</h3>
+                <p class="mb-4">Add some products to your cart</p>
+                <a href="../all_products.html" class="btn btn-primary">Browse Products</a>
+            </div>
+            
+            <!-- Cart Content -->
+            <div id="cartContent" class="row">
+                <div class="col-lg-8">
+                    <div id="cartItems">
+                        <!-- Cart items will be loaded here -->
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="cart-summary sticky-top" style="top: 100px;">
+                        <h4>Order Summary</h4>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <span id="subtotal">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Shipping:</span>
+                            <span id="shipping">$5.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between cart-total">
+                            <span>Total:</span>
+                            <span id="total">$0.00</span>
+                        </div>
+                        <a href="checkout.html" class="btn btn-primary w-100 mt-3">Proceed to Checkout</a>
+                        <button class="btn btn-outline-secondary w-100 mt-2" onclick="clearCart()">Clear Cart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Clear Cart Confirmation Modal -->
+    <div class="modal fade" id="clearCartModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Clear Shopping Cart</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to remove all items from your cart?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmClearCart()">Clear Cart</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Constants
+        const SHIPPING_COST = 5.00;
+        const API_URL = 'http://localhost:8080/api';
+        const BACKEND_URL = 'http://localhost:8080';
+        
+        // DOM Elements
+        const cartItemsContainer = document.getElementById('cartItems');
+        const subtotalElement = document.getElementById('subtotal');
+        const shippingElement = document.getElementById('shipping');
+        const totalElement = document.getElementById('total');
+        const cartCountElement = document.getElementById('cartCount');
+        const emptyCartMessageElement = document.getElementById('emptyCartMessage');
+        const cartContentElement = document.getElementById('cartContent');
+        const loginLinkElement = document.getElementById('loginLink');
+        const logoutLinkElement = document.getElementById('logoutLink');
+        const clearCartModal = new bootstrap.Modal(document.getElementById('clearCartModal'));
+        
+        // Load Cart
+        function loadCart() {
+            const cartData = localStorage.getItem('cart');
+            
+            if (!cartData || JSON.parse(cartData).length === 0) {
+                showEmptyCart();
+                return;
+            }
+            
+            const cart = JSON.parse(cartData);
+            updateCartCount(cart);
+            renderCartItems(cart);
+            updateOrderSummary(cart);
+        }
+        
+        // Show Empty Cart
+        function showEmptyCart() {
+            emptyCartMessageElement.style.display = 'block';
+            cartContentElement.style.display = 'none';
+            cartCountElement.textContent = '0';
+        }
+        
+        // Update Cart Count
+        function updateCartCount(cart) {
+            let count = 0;
+            cart.forEach(item => {
+                count += item.quantity;
+            });
+            cartCountElement.textContent = count;
+        }
+        
+        // Render Cart Items
+        function renderCartItems(cart) {
+            cartItemsContainer.innerHTML = '';
+            
+            cart.forEach((item, index) => {
+                const itemTotal = item.price * item.quantity;
+                
+                const cartItemElement = document.createElement('div');
+                cartItemElement.className = 'cart-item';
+                cartItemElement.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <img src="${item.image ? (item.image.startsWith('http') ? item.image : `${BACKEND_URL}${item.image}`) : 'https://via.placeholder.com/100'}" alt="${item.name}" class="cart-item-image">
+                        </div>
+                        <div class="col-md-9">
+                            <div class="d-flex justify-content-between">
+                                <h5>${item.name}</h5>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeItem(${index})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <p class="text-muted">${item.weight}g</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="quantity-control">
+                                    <button onclick="updateQuantity(${index}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>-</button>
+                                    <input type="number" min="1" value="${item.quantity}" onchange="setQuantity(${index}, this.value)">
+                                    <button onclick="updateQuantity(${index}, 1)">+</button>
+                                </div>
+                                <div class="price">
+                                    <span class="text-muted">$${item.price.toFixed(2)} each</span>
+                                    <div class="fw-bold">$${itemTotal.toFixed(2)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                cartItemsContainer.appendChild(cartItemElement);
+            });
+        }
+        
+        // Update Order Summary
+        function updateOrderSummary(cart) {
+            let subtotal = 0;
+            
+            cart.forEach(item => {
+                subtotal += item.price * item.quantity;
+            });
+            
+            const shipping = cart.length > 0 ? SHIPPING_COST : 0;
+            const total = subtotal + shipping;
+            
+            subtotalElement.textContent = `$${subtotal.toFixed(2)}`;
+            shippingElement.textContent = `$${shipping.toFixed(2)}`;
+            totalElement.textContent = `$${total.toFixed(2)}`;
+        }
+        
+        // Update Item Quantity
+        function updateQuantity(index, change) {
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            
+            if (index >= 0 && index < cart.length) {
+                cart[index].quantity += change;
+                
+                if (cart[index].quantity < 1) {
+                    cart[index].quantity = 1;
+                }
+                
+                localStorage.setItem('cart', JSON.stringify(cart));
+                updateCartCount(cart);
+                renderCartItems(cart);
+                updateOrderSummary(cart);
+            }
+        }
+        
+        // Set Item Quantity
+        function setQuantity(index, value) {
+            const quantity = parseInt(value);
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            
+            if (index >= 0 && index < cart.length && !isNaN(quantity) && quantity > 0) {
+                cart[index].quantity = quantity;
+                localStorage.setItem('cart', JSON.stringify(cart));
+                updateCartCount(cart);
+                renderCartItems(cart);
+                updateOrderSummary(cart);
+            }
+        }
+        
+        // Remove Item
+        function removeItem(index) {
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            
+            if (index >= 0 && index < cart.length) {
+                cart.splice(index, 1);
+                localStorage.setItem('cart', JSON.stringify(cart));
+                
+                if (cart.length === 0) {
+                    showEmptyCart();
+                } else {
+                    updateCartCount(cart);
+                    renderCartItems(cart);
+                    updateOrderSummary(cart);
+                }
+            }
+        }
+        
+        // Clear Cart
+        function clearCart() {
+            clearCartModal.show();
+        }
+        
+        // Confirm Clear Cart
+        function confirmClearCart() {
+            localStorage.removeItem('cart');
+            clearCartModal.hide();
+            showEmptyCart();
+        }
+        
+        // Check Login Status
+        function checkLoginStatus() {
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                loginLinkElement.style.display = 'block';
+                logoutLinkElement.style.display = 'none';
+                return;
+            }
+            
+            fetch(`${API_URL}/auth/user`, {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Not authenticated');
+                }
+                return response.json();
+            })
+            .then(data => {
+                loginLinkElement.style.display = 'none';
+                logoutLinkElement.style.display = 'block';
+            })
+            .catch(error => {
+                loginLinkElement.style.display = 'block';
+                logoutLinkElement.style.display = 'none';
+            });
+        }
+        
+        // Logout Function
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '../index.html';
+        }
+        
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCart();
+            checkLoginStatus();
+        });
+    </script>
+</body>
+</html> 

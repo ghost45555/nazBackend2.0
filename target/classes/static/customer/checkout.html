@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Rice Products</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .content-section {
+            padding-top: 80px;
+        }
+        .cart-item {
+            display: flex;
+            padding: 10px;
+            border-bottom: 1px solid #e9e9e9;
+            margin-bottom: 10px;
+        }
+        .cart-item-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            margin-right: 15px;
+            border-radius: 4px;
+        }
+        .cart-item-details {
+            flex-grow: 1;
+        }
+        .cart-item-price {
+            text-align: right;
+            font-weight: bold;
+        }
+        .order-summary {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .order-total {
+            font-size: 1.2rem;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .address-card {
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        .address-card:hover {
+            border-color: #aaa;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .address-card.selected {
+            border-color: #0d6efd;
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+        .empty-cart {
+            text-align: center;
+            padding: 50px 0;
+        }
+        .empty-cart i {
+            font-size: 4rem;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="../index.html">Rice Products</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="products.html">All Products</a>
+                    </li>
+                    <li class="nav-item" id="loginLink">
+                        <a class="nav-link" href="../login.html">Login</a>
+                    </li>
+                    <li class="nav-item" id="logoutLink" style="display:none;">
+                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cart.html">
+                            <i class="bi bi-cart"></i> Cart <span id="cartCount" class="badge bg-primary">0</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Section -->
+    <div class="content-section">
+        <div class="container mt-5">
+            <h1 class="mb-4">Checkout</h1>
+            
+            <!-- User Status -->
+            <div id="userStatus" class="alert alert-info mb-4">
+                Checking login status...
+            </div>
+            
+            <!-- Empty Cart Message -->
+            <div id="emptyCartMessage" class="empty-cart" style="display:none;">
+                <i class="bi bi-cart-x"></i>
+                <h3>Your cart is empty</h3>
+                <p class="mb-4">Add some products to continue shopping</p>
+                <a href="../all_products.html" class="btn btn-primary">Browse Products</a>
+            </div>
+
+            <div id="checkoutContainer" class="row">
+                <!-- Checkout Form -->
+                <div class="col-md-8 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">Shipping Information</h5>
+                            
+                            <!-- Saved Addresses Section (for logged-in users) -->
+                            <div id="savedAddressesSection" style="display:none;">
+                                <h6 class="mb-3">Select a Saved Address</h6>
+                                <div id="savedAddressesList" class="mb-4">
+                                    <!-- Saved addresses will be loaded here -->
+                                </div>
+                                <div class="mb-3">
+                                    <button class="btn btn-outline-primary" id="useNewAddressBtn">
+                                        <i class="bi bi-plus-circle"></i> Use a New Address
+                                    </button>
+                                </div>
+                                <hr class="mb-4">
+                            </div>
+                            
+                            <!-- Address Form -->
+                            <form id="shippingForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="firstName" class="form-label">First Name</label>
+                                        <input type="text" class="form-control" id="firstName" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="lastName" class="form-label">Last Name</label>
+                                        <input type="text" class="form-control" id="lastName" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="phone" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="address" class="form-label">Address</label>
+                                    <input type="text" class="form-control" id="address" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="apartment" class="form-label">Apartment, Suite, etc. (optional)</label>
+                                    <input type="text" class="form-control" id="apartment">
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-8 mb-3">
+                                        <label for="city" class="form-label">City</label>
+                                        <input type="text" class="form-control" id="city" required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="postalCode" class="form-label">Postal/ZIP Code</label>
+                                        <input type="text" class="form-control" id="postalCode" required>
+                                    </div>
+                                </div>
+                                
+                                <div id="saveAddressCheckbox" class="mb-3 form-check" style="display:none;">
+                                    <input type="checkbox" class="form-check-input" id="saveAddress">
+                                    <label class="form-check-label" for="saveAddress">Save this address to my account</label>
+                                </div>
+                                
+                                <div id="setDefaultAddressCheckbox" class="mb-3 form-check" style="display:none;">
+                                    <input type="checkbox" class="form-check-input" id="setDefaultAddress">
+                                    <label class="form-check-label" for="setDefaultAddress">Set as default address</label>
+                                </div>
+                            </form>
+                            
+                            <h5 class="card-title mb-4 mt-4">Payment Method</h5>
+                            <form id="paymentForm">
+                                <div class="mb-3">
+                                    <select class="form-select" id="paymentMethod" required>
+                                        <option value="">Select Payment Method</option>
+                                        <option value="Credit Card">Credit Card</option>
+                                        <option value="PayPal">PayPal</option>
+                                        <option value="Cash on Delivery">Cash on Delivery</option>
+                                        <option value="Bank Transfer">Bank Transfer</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="orderNotes" class="form-label">Order Notes (optional)</label>
+                                    <textarea class="form-control" id="orderNotes" rows="3"></textarea>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Order Summary -->
+                <div class="col-md-4">
+                    <div class="order-summary sticky-top" style="top: 100px;">
+                        <h5 class="mb-4">Order Summary</h5>
+                        
+                        <div id="cartItems">
+                            <!-- Cart items will be loaded here -->
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-3">
+                            <span>Subtotal:</span>
+                            <span id="subtotal">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <span>Shipping:</span>
+                            <span id="shipping">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between order-total">
+                            <span>Total:</span>
+                            <span id="total">$0.00</span>
+                        </div>
+                        
+                        <button id="placeOrderBtn" class="btn btn-primary w-100 mt-4">
+                            Place Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Success Modal -->
+    <div class="modal fade" id="orderSuccessModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Order Placed Successfully!</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <p>Thank you for your order. Your order has been placed successfully.</p>
+                    <p>Order Number: <strong id="successOrderId">123456</strong></p>
+                    <p>A confirmation email has been sent to <span id="successEmail">your@email.com</span></p>
+                    
+                    <!-- Sign Up Card for Guest Users -->
+                    <div id="guestSignupCard" class="card mt-4 bg-light" style="display:none;">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-person-plus me-2"></i>Create an Account</h6>
+                            <p class="card-text small">Create an account to track this order and future purchases.</p>
+                            <a id="signupLink" href="signup.html" class="btn btn-outline-primary btn-sm">Sign Up</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="../index.html" class="btn btn-secondary">Back to Home</a>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="viewOrderDetailsBtn">View Order Details</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let isLoggedIn = false;
+        let userId = null;
+        let cart = [];
+        let savedAddresses = [];
+        let selectedAddressId = null;
+        let useNewAddress = true;
+        let lastOrderId = null;
+        let lastOrderEmail = null;
+        
+        // Constants
+        const SHIPPING_FEE = 5.00;
+        const API_URL = 'http://localhost:8080/api';
+        const BACKEND_URL = 'http://localhost:8080';
+        
+        // DOM Elements
+        const cartItemsContainer = document.getElementById('cartItems');
+        const subtotalElement = document.getElementById('subtotal');
+        const shippingElement = document.getElementById('shipping');
+        const totalElement = document.getElementById('total');
+        const cartCountElement = document.getElementById('cartCount');
+        const userStatusElement = document.getElementById('userStatus');
+        const loginLinkElement = document.getElementById('loginLink');
+        const logoutLinkElement = document.getElementById('logoutLink');
+        const savedAddressesSectionElement = document.getElementById('savedAddressesSection');
+        const savedAddressesListElement = document.getElementById('savedAddressesList');
+        const useNewAddressBtnElement = document.getElementById('useNewAddressBtn');
+        const saveAddressCheckboxElement = document.getElementById('saveAddressCheckbox');
+        const setDefaultAddressCheckboxElement = document.getElementById('setDefaultAddressCheckbox');
+        const shippingFormElement = document.getElementById('shippingForm');
+        const paymentFormElement = document.getElementById('paymentForm');
+        const placeOrderBtnElement = document.getElementById('placeOrderBtn');
+        const emptyCartMessageElement = document.getElementById('emptyCartMessage');
+        const checkoutContainerElement = document.getElementById('checkoutContainer');
+        const orderSuccessModal = new bootstrap.Modal(document.getElementById('orderSuccessModal'));
+        const guestSignupCardElement = document.getElementById('guestSignupCard');
+        const signupLinkElement = document.getElementById('signupLink');
+        
+        // Check Login Status
+        function checkLoginStatus() {
+            userStatusElement.textContent = 'Checking login status...';
+            
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            if (!token || !user) {
+                handleNotLoggedIn();
+                return;
+            }
+            
+            try {
+                // Use the stored user data instead of making an API call
+                const userData = JSON.parse(user);
+                isLoggedIn = true;
+                userStatusElement.classList.remove('alert-info', 'alert-danger');
+                userStatusElement.classList.add('alert-success');
+                userStatusElement.textContent = `Welcome back, ${userData.username || 'Customer'}!`;
+                
+                loginLinkElement.style.display = 'none';
+                logoutLinkElement.style.display = 'block';
+                saveAddressCheckboxElement.style.display = 'block';
+                setDefaultAddressCheckboxElement.style.display = 'block';
+                
+                // Set userId if available
+                userId = userData.id;
+                
+                // Pre-fill the form with user data if available
+                if (userData.email) document.getElementById('email').value = userData.email;
+                if (userData.firstName) document.getElementById('firstName').value = userData.firstName;
+                if (userData.lastName) document.getElementById('lastName').value = userData.lastName;
+                if (userData.phone) document.getElementById('phone').value = userData.phone;
+                
+                // Try to load saved addresses if userId is available
+                if (userId) {
+                    loadSavedAddresses();
+                }
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                handleNotLoggedIn();
+            }
+        }
+        
+        function handleNotLoggedIn() {
+            isLoggedIn = false;
+            userStatusElement.classList.remove('alert-info', 'alert-success');
+            userStatusElement.classList.add('alert-warning');
+            userStatusElement.textContent = 'You are not logged in. You can still place an order as a guest.';
+            
+            loginLinkElement.style.display = 'block';
+            logoutLinkElement.style.display = 'none';
+            savedAddressesSectionElement.style.display = 'none';
+            saveAddressCheckboxElement.style.display = 'none';
+            setDefaultAddressCheckboxElement.style.display = 'none';
+        }
+        
+        // Load Saved Addresses
+        function loadSavedAddresses() {
+            if (!isLoggedIn || !userId) {
+                savedAddressesSectionElement.style.display = 'none';
+                return;
+            }
+            
+            fetch(`${API_URL}/addresses/user/${userId}`, {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                }
+            })
+            .then(response => response.json())
+            .then(addresses => {
+                savedAddresses = addresses;
+                
+                if (addresses.length > 0) {
+                    savedAddressesSectionElement.style.display = 'block';
+                    renderSavedAddresses();
+                } else {
+                    savedAddressesSectionElement.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading saved addresses:', error);
+                savedAddressesSectionElement.style.display = 'none';
+            });
+        }
+        
+        // Render Saved Addresses
+        function renderSavedAddresses() {
+            savedAddressesListElement.innerHTML = '';
+            
+            savedAddresses.forEach(address => {
+                const isDefault = address.isDefault ? '<span class="badge bg-primary ms-2">Default</span>' : '';
+                const fullAddress = address.apartment 
+                    ? `${address.address}, ${address.apartment}, ${address.city}, ${address.postalCode}`
+                    : `${address.address}, ${address.city}, ${address.postalCode}`;
+                
+                const addressCard = document.createElement('div');
+                addressCard.className = `address-card ${selectedAddressId === address.id ? 'selected' : ''}`;
+                addressCard.dataset.addressId = address.id;
+                addressCard.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>Address${isDefault}</strong>
+                            <p class="mb-0">${fullAddress}</p>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="addressSelection" 
+                                id="address${address.id}" ${selectedAddressId === address.id ? 'checked' : ''}>
+                        </div>
+                    </div>
+                `;
+                
+                addressCard.addEventListener('click', () => {
+                    selectAddress(address.id);
+                });
+                
+                savedAddressesListElement.appendChild(addressCard);
+            });
+        }
+        
+        // Select an Address
+        function selectAddress(addressId) {
+            selectedAddressId = addressId;
+            useNewAddress = false;
+            
+            // Update UI to show selected address
+            document.querySelectorAll('.address-card').forEach(card => {
+                card.classList.remove('selected');
+                if (card.dataset.addressId == addressId) {
+                    card.classList.add('selected');
+                    card.querySelector('input[type="radio"]').checked = true;
+                }
+            });
+            
+            // Disable the form fields when using a saved address
+            const formFields = shippingFormElement.querySelectorAll('input:not([type="checkbox"])');
+            formFields.forEach(field => {
+                field.disabled = true;
+            });
+            
+            // Fill the form with the selected address data
+            const selectedAddress = savedAddresses.find(addr => addr.id == addressId);
+            if (selectedAddress) {
+                document.getElementById('address').value = selectedAddress.address;
+                document.getElementById('apartment').value = selectedAddress.apartment || '';
+                document.getElementById('city').value = selectedAddress.city;
+                document.getElementById('postalCode').value = selectedAddress.postalCode;
+            }
+        }
+        
+        // Use a New Address
+        function handleUseNewAddress() {
+            useNewAddress = true;
+            selectedAddressId = null;
+            
+            // Update UI
+            document.querySelectorAll('.address-card').forEach(card => {
+                card.classList.remove('selected');
+                card.querySelector('input[type="radio"]').checked = false;
+            });
+            
+            // Enable the form fields
+            const formFields = shippingFormElement.querySelectorAll('input:not([type="checkbox"])');
+            formFields.forEach(field => {
+                field.disabled = false;
+            });
+            
+            // Clear address fields
+            document.getElementById('address').value = '';
+            document.getElementById('apartment').value = '';
+            document.getElementById('city').value = '';
+            document.getElementById('postalCode').value = '';
+        }
+        
+        // Load Cart
+        function loadCart() {
+            const cartData = localStorage.getItem('cart');
+            if (cartData) {
+                cart = JSON.parse(cartData);
+                updateCartCount();
+                renderCartItems();
+                updateOrderSummary();
+                
+                if (cart.length === 0) {
+                    showEmptyCartMessage();
+                }
+            } else {
+                showEmptyCartMessage();
+            }
+        }
+        
+        function showEmptyCartMessage() {
+            emptyCartMessageElement.style.display = 'block';
+            checkoutContainerElement.style.display = 'none';
+        }
+        
+        // Update Cart Count
+        function updateCartCount() {
+            let count = 0;
+            cart.forEach(item => {
+                count += item.quantity;
+            });
+            cartCountElement.textContent = count;
+        }
+        
+        // Render Cart Items
+        function renderCartItems() {
+            cartItemsContainer.innerHTML = '';
+            
+            cart.forEach(item => {
+                const totalPrice = item.price * item.quantity;
+                
+                const cartItem = document.createElement('div');
+                cartItem.className = 'cart-item';
+                cartItem.innerHTML = `
+                    <img src="${item.image || 'https://via.placeholder.com/80'}" alt="${item.name}" class="cart-item-image">
+                    <div class="cart-item-details">
+                        <h6 class="mb-0">${item.name}</h6>
+                        <small class="text-muted">${item.weight}g</small>
+                        <div class="mt-1">Qty: ${item.quantity}</div>
+                    </div>
+                    <div class="cart-item-price">
+                        $${totalPrice.toFixed(2)}
+                    </div>
+                `;
+                
+                cartItemsContainer.appendChild(cartItem);
+            });
+        }
+        
+        // Update Order Summary
+        function updateOrderSummary() {
+            let subtotal = 0;
+            
+            cart.forEach(item => {
+                subtotal += item.price * item.quantity;
+            });
+            
+            const shipping = cart.length > 0 ? SHIPPING_FEE : 0;
+            const total = subtotal + shipping;
+            
+            subtotalElement.textContent = `$${subtotal.toFixed(2)}`;
+            shippingElement.textContent = `$${shipping.toFixed(2)}`;
+            totalElement.textContent = `$${total.toFixed(2)}`;
+        }
+        
+        // Place Order
+        function placeOrder() {
+            if (cart.length === 0) {
+                alert('Your cart is empty!');
+                return;
+            }
+            
+            // Validate the forms
+            if (!validateForms()) {
+                return;
+            }
+            
+            // Disable the place order button and show loading state
+            placeOrderBtnElement.disabled = true;
+            placeOrderBtnElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            
+            // Calculate order totals
+            let subtotal = 0;
+            cart.forEach(item => {
+                subtotal += item.price * item.quantity;
+            });
+            const shipping = SHIPPING_FEE;
+            const total = subtotal + shipping;
+            
+            // Create the order items
+            const orderItems = cart.map(item => {
+                return {
+                    productId: item.productId,
+                    productName: item.name,
+                    productImage: item.image,
+                    packagingPhoto: item.packagingPhoto,
+                    weight: item.weight,
+                    price: item.price,
+                    quantity: item.quantity
+                };
+            });
+            
+            // Create the order object
+            const orderData = {
+                userId: isLoggedIn ? userId : null,
+                email: document.getElementById('email').value,
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                address: document.getElementById('address').value,
+                apartment: document.getElementById('apartment').value,
+                city: document.getElementById('city').value,
+                postalCode: document.getElementById('postalCode').value,
+                phone: document.getElementById('phone').value,
+                orderNotes: document.getElementById('orderNotes').value,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                subtotal: subtotal,
+                shipping: shipping,
+                total: total,
+                items: orderItems
+            };
+            
+            // Make the API call to create the order
+            const token = localStorage.getItem('token');
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
+            }
+            
+            fetch(`${API_URL}/orders`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(orderData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 405) {
+                        throw new Error('Method not allowed. The server does not accept POST requests to this endpoint.');
+                    }
+                    return response.text().then(text => {
+                        throw new Error(`Failed to place order: ${text || response.statusText}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(createdOrder => {
+                // Store order info for potential signup
+                lastOrderId = createdOrder.id;
+                lastOrderEmail = createdOrder.email;
+                
+                // If the user is logged in and wants to save the address
+                if (isLoggedIn && useNewAddress && document.getElementById('saveAddress').checked) {
+                    saveNewAddress();
+                }
+                
+                // Show the success modal
+                document.getElementById('successOrderId').textContent = createdOrder.id;
+                document.getElementById('successEmail').textContent = createdOrder.email;
+                
+                // Show signup card for guest users
+                if (!isLoggedIn) {
+                    guestSignupCardElement.style.display = 'block';
+                    signupLinkElement.href = `signup.html?order=${createdOrder.id}&email=${encodeURIComponent(createdOrder.email)}`;
+                } else {
+                    guestSignupCardElement.style.display = 'none';
+                }
+                
+                orderSuccessModal.show();
+                
+                // Clear the cart
+                localStorage.removeItem('cart');
+                cart = [];
+                updateCartCount();
+                
+                // Enable the place order button
+                placeOrderBtnElement.disabled = false;
+                placeOrderBtnElement.textContent = 'Place Order';
+                
+                // Set up the view order details button
+                document.getElementById('viewOrderDetailsBtn').onclick = function() {
+                    if (isLoggedIn) {
+                        window.location.href = `my-orders.html?order=${createdOrder.id}`;
+                    } else {
+                        window.location.href = `order-details.html?order=${createdOrder.id}&email=${encodeURIComponent(createdOrder.email)}`;
+                    }
+                };
+            })
+            .catch(error => {
+                console.error('Error placing order:', error);
+                alert(`${error.message || 'Failed to place order. Please try again later.'}`);
+                
+                // Enable the place order button
+                placeOrderBtnElement.disabled = false;
+                placeOrderBtnElement.textContent = 'Place Order';
+            });
+        }
+        
+        // Validate Forms
+        function validateForms() {
+            const shippingFormValid = shippingFormElement.checkValidity();
+            const paymentFormValid = paymentFormElement.checkValidity();
+            
+            if (!shippingFormValid) {
+                shippingFormElement.reportValidity();
+                return false;
+            }
+            
+            if (!paymentFormValid) {
+                paymentFormElement.reportValidity();
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Save New Address
+        function saveNewAddress() {
+            if (!isLoggedIn || !userId) return;
+            
+            const addressData = {
+                userId: userId,
+                address: document.getElementById('address').value,
+                apartment: document.getElementById('apartment').value,
+                city: document.getElementById('city').value,
+                postalCode: document.getElementById('postalCode').value,
+                isDefault: document.getElementById('setDefaultAddress').checked
+            };
+            
+            fetch(`${API_URL}/addresses`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(addressData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to save address');
+                }
+                return response.json();
+            })
+            .then(savedAddress => {
+                console.log('Address saved successfully:', savedAddress);
+            })
+            .catch(error => {
+                console.error('Error saving address:', error);
+            });
+        }
+        
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '../index.html';
+        }
+        
+        // Event Listeners
+        window.addEventListener('DOMContentLoaded', () => {
+            checkLoginStatus();
+            loadCart();
+            
+            useNewAddressBtnElement.addEventListener('click', handleUseNewAddress);
+            placeOrderBtnElement.addEventListener('click', placeOrder);
+        });
+    </script>
+</body>
+</html> 

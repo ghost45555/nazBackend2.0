@@ -81,7 +81,6 @@
                         <div class="mb-3">
                             <label for="role" class="form-label">Role</label>
                             <select class="form-select" id="role" name="role" required>
-                                <option value="Customer" selected>Customer</option>
                                 <option value="Product Manager">Product Manager</option>
                                 <option value="Order Manager">Order Manager</option>
                                 <option value="Admin" id="adminRoleOption" disabled>Admin (Requires username \'admin\')</option>
@@ -113,7 +112,7 @@
                 adminRoleOption.textContent = 'Admin (Requires username \'admin\')'; // Reset text
                 // If admin was selected and username changes, revert selection
                 if (roleSelect.value === 'Admin') {
-                    roleSelect.value = 'Customer'; 
+                    roleSelect.value = 'Product Manager'; 
                 }
             }
         });
