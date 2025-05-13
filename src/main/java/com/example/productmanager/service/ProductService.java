@@ -193,6 +193,22 @@ public class ProductService {
         featureRepository.deleteById(featureId);
     }
 
+    /**
+     * Updates a product feature by ID
+     *
+     * @param featureId the ID of the feature to update
+     * @param feature the new feature text
+     * @return the updated ProductFeature
+     * @throws EntityNotFoundException if the feature is not found
+     */
+    public ProductFeature updateProductFeature(Long featureId, String feature) {
+        ProductFeature productFeature = featureRepository.findById(featureId)
+            .orElseThrow(() -> new EntityNotFoundException("Feature not found with id: " + featureId));
+        
+        productFeature.setFeature(feature);
+        return featureRepository.save(productFeature);
+    }
+
     // New methods for managing product specifications
     public List<ProductSpecification> getProductSpecifications(Long productId) {
         return specificationRepository.findByProductId(productId);
@@ -212,6 +228,24 @@ public class ProductService {
 
     public void deleteProductSpecification(Long specificationId) {
         specificationRepository.deleteById(specificationId);
+    }
+
+    /**
+     * Updates a product specification by ID
+     *
+     * @param specificationId the ID of the specification to update
+     * @param specName the new specification name
+     * @param specValue the new specification value
+     * @return the updated ProductSpecification
+     * @throws EntityNotFoundException if the specification is not found
+     */
+    public ProductSpecification updateProductSpecification(Long specificationId, String specName, String specValue) {
+        ProductSpecification specification = specificationRepository.findById(specificationId)
+            .orElseThrow(() -> new EntityNotFoundException("Specification not found with id: " + specificationId));
+        
+        specification.setSpecName(specName);
+        specification.setSpecValue(specValue);
+        return specificationRepository.save(specification);
     }
 
     // New methods for managing product certifications
@@ -279,7 +313,10 @@ public class ProductService {
         } else {
             // Create new record
             nutritionalInfo.setProduct(product);
-            nutritionalInfo.setProductId(productId); // Explicitly set the ID
+            // When using @MapsId, don't set ID directly - it's derived from product
+            // nutritionalInfo.setProductId(productId); // Remove this line
+            
+            // Set product and let @MapsId handle the ID mapping
             return nutritionalInfoRepository.save(nutritionalInfo);
         }
     }
@@ -318,6 +355,104 @@ public class ProductService {
     
     public Optional<ProductWeightOption> getProductWeightOption(Long id) {
         return weightOptionRepository.findById(id);
+    }
+
+    /**
+     * Updates the packaging photo for a product weight option.
+     *
+     * @param productId the ID of the product
+     * @param optionId the ID of the weight option to update
+     * @param packagingImage the new packaging image
+     * @return the updated ProductWeightOption
+     * @throws EntityNotFoundException if the product or weight option is not found
+     * @throws IOException if there's an error processing the image
+     */
+    @Transactional
+    public ProductWeightOption updateWeightOptionImage(Long productId, Long optionId, MultipartFile packagingImage) 
+            throws EntityNotFoundException, IOException {
+        // Verify product exists
+        Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+        
+        // Find and verify the weight option belongs to this product
+        ProductWeightOption weightOption = weightOptionRepository.findById(optionId)
+            .orElseThrow(() -> new EntityNotFoundException("Weight option not found with id: " + optionId));
+        
+        // Verify the weight option belongs to the product
+        if (!weightOption.getProduct().getId().equals(productId)) {
+            throw new EntityNotFoundException("Weight option with id " + optionId + 
+                                               " does not belong to product with id " + productId);
+        }
+        
+        // Update the packaging photo if provided
+        if (packagingImage != null && !packagingImage.isEmpty()) {
+            weightOption.setPackagingPhotoData(packagingImage.getBytes());
+            weightOption.setPackagingPhoto("/api/products/" + productId + "/weight-options/" + optionId + "/image");
+        }
+        
+        // Save and return the updated weight option
+        return weightOptionRepository.save(weightOption);
+    }
+
+    /**
+     * Updates the weight value and price for a product weight option.
+     *
+     * @param productId the ID of the product
+     * @param optionId the ID of the weight option to update
+     * @param weightValue the new weight value
+     * @param price the new price
+     * @return the updated ProductWeightOption
+     * @throws EntityNotFoundException if the product or weight option is not found
+     */
+    @Transactional
+    public ProductWeightOption updateWeightOptionInfo(Long productId, Long optionId, Integer weightValue, BigDecimal price) 
+            throws EntityNotFoundException {
+        // Verify product exists
+        Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+        
+        // Find and verify the weight option belongs to this product
+        ProductWeightOption weightOption = weightOptionRepository.findById(optionId)
+            .orElseThrow(() -> new EntityNotFoundException("Weight option not found with id: " + optionId));
+        
+        // Verify the weight option belongs to the product
+        if (!weightOption.getProduct().getId().equals(productId)) {
+            throw new EntityNotFoundException("Weight option with id " + optionId + 
+                                               " does not belong to product with id " + productId);
+        }
+        
+        // Update the weight value and price
+        weightOption.setWeightValue(weightValue);
+        weightOption.setPrice(price);
+        
+        // Save and return the updated weight option
+        return weightOptionRepository.save(weightOption);
+    }
+
+    /**
+     * Updates the main image for a product.
+     *
+     * @param productId the ID of the product
+     * @param image the new product image
+     * @return the updated Product
+     * @throws EntityNotFoundException if the product is not found
+     * @throws IOException if there's an error processing the image
+     */
+    @Transactional
+    public Product updateProductImage(Long productId, MultipartFile image) 
+            throws EntityNotFoundException, IOException {
+        // Verify product exists
+        Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+        
+        // Update the image if provided
+        if (image != null && !image.isEmpty()) {
+            product.setImageData(image.getBytes());
+            product.setImageUrl("/api/products/" + productId + "/image");
+        }
+        
+        // Save and return the updated product
+        return productRepository.save(product);
     }
 
     public ProductDTO getProductDetails(Long productId) {

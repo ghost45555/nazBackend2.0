@@ -74,6 +74,11 @@
         <div class="container mt-5">
             <h1 class="mb-4">Product Manager</h1>
             
+            <!-- Auth Status -->
+            <div id="authStatus" class="alert alert-info mb-3" style="display:none;">
+                Checking authentication status...
+            </div>
+            
             <!-- Navigation Tabs -->
             <ul class="nav nav-tabs" id="myTab" role="tablist">
                 <li class="nav-item" role="presentation">
@@ -401,6 +406,120 @@
             return response;
         }
 
+        // Check authentication status
+        async function checkAuthStatus() {
+            const authStatusDiv = document.getElementById('authStatus');
+            authStatusDiv.style.display = 'block';
+            authStatusDiv.className = 'alert alert-info mb-3';
+            authStatusDiv.textContent = 'Checking authentication status...';
+            
+            const token = localStorage.getItem('token');
+            
+            try {
+                console.log("Making auth check request...");
+                // Display token info
+                if (token) {
+                    try {
+                        // Try to decode the JWT to show role information
+                        const base64Url = token.split('.')[1];
+                        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                        }).join(''));
+                        
+                        const payload = JSON.parse(jsonPayload);
+                        console.log("JWT payload:", payload);
+                        
+                        // Log authentication attempt with token details
+                        if (payload.roles) {
+                            console.log("Roles from token:", payload.roles);
+                            // Check if ROLE_ADMIN is in the roles - this is the direct check
+                            if (payload.roles.includes("ROLE_ADMIN")) {
+                                authStatusDiv.className = 'alert alert-success mb-3';
+                                authStatusDiv.innerHTML = `
+                                    <strong>Found ADMIN role in token!</strong><br>
+                                    Username: ${payload.sub}<br>
+                                    Roles: ${payload.roles.join(', ')}<br>
+                                    If you're still getting 405 errors, there might be a validation issue with the token.
+                                `;
+                                
+                                // Try the alternative endpoints since we know user has admin role
+                                tryDirectImageUpdate();
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error parsing JWT:", e);
+                    }
+                }
+                
+                // Try the API endpoint
+                const response = await fetchWithAuth(`${API_URL}/auth/check-admin`);
+                console.log("Auth check response status:", response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log("Auth check data:", data);
+                    
+                    if (data.isAdmin) {
+                        authStatusDiv.className = 'alert alert-success mb-3';
+                        authStatusDiv.innerHTML = `
+                            <strong>Authenticated as Admin</strong><br>
+                            Username: ${data.username}<br>
+                            You have full access to all features.
+                        `;
+                        
+                        // Try the alternative endpoints since we know user has admin role
+                        tryDirectImageUpdate();
+                    } else {
+                        authStatusDiv.className = 'alert alert-warning mb-3';
+                        authStatusDiv.innerHTML = `
+                            <strong>Missing Admin Role</strong><br>
+                            You are logged in as ${data.username} but do not have admin privileges.<br>
+                            ROLE_ADMIN is required for editing operations.
+                        `;
+                    }
+                } else {
+                    const errorText = await response.text();
+                    authStatusDiv.className = 'alert alert-warning mb-3';
+                    authStatusDiv.innerHTML = `
+                        <strong>Authentication Check Failed</strong><br>
+                        Status: ${response.status} ${response.statusText}<br>
+                        Error: ${errorText}<br>
+                        Please verify your admin authentication.
+                    `;
+                    
+                    // Still try the direct token check as a fallback
+                    if (token) {
+                        tryDirectImageUpdate();
+                    }
+                }
+            } catch (error) {
+                console.error("Auth check error:", error);
+                authStatusDiv.className = 'alert alert-danger mb-3';
+                authStatusDiv.innerHTML = `
+                    <strong>Authentication Check Error</strong><br>
+                    Error: ${error.message}<br>
+                    Token exists: ${token ? 'Yes' : 'No'}<br>
+                    <div>
+                        <button class="btn btn-sm btn-warning mt-2" onclick="patchSecurityConfig()">Patch Security Config</button>
+                        <button class="btn btn-sm btn-warning mt-2" onclick="tryDirectImageUpdate()">Try Direct Image Update</button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Try alternative approaches to update images
+        async function tryDirectImageUpdate() {
+            // Do nothing for now, this will be used to test direct API calls if needed
+            console.log("Ready to try direct image update if needed");
+        }
+        
+        // Function to bypass security for testing (would need backend support)
+        async function patchSecurityConfig() {
+            alert("This would require a backend API to temporarily modify security. For now, please check the server logs and validate your admin credentials.");
+        }
+
         // Arrays to store temporary data
         let features = []; // array of strings
         let specifications = []; // array of {name: string, value: string} objects
@@ -456,12 +575,31 @@
                         if (features && features.length > 0) {
                             featuresHtml = `
                                 <div class="mt-3">
-                                    <h6>Features:</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">Features:</h6>
+                                        <button class="btn btn-sm btn-success" onclick="addMoreFeatures(${product.id})">Add More</button>
+                                    </div>
                                     <ul class="list-group">
                                         ${features.map(feature => 
-                                            `<li class="list-group-item">${feature.feature}</li>`
+                                            `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>${feature.feature}</span>
+                                                <div>
+                                                    <button class="btn btn-sm btn-info" onclick="editFeature(${product.id}, ${feature.id}, '${feature.feature.replace(/'/g, "\\'")}')">Edit</button>
+                                                    <button class="btn btn-sm btn-danger" onclick="deleteFeature(${product.id}, ${feature.id})">Delete</button>
+                                                </div>
+                                            </li>`
                                         ).join('')}
                                     </ul>
+                                </div>
+                            `;
+                        } else {
+                            featuresHtml = `
+                                <div class="mt-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">Features:</h6>
+                                        <button class="btn btn-sm btn-success" onclick="addMoreFeatures(${product.id})">Add</button>
+                                    </div>
+                                    <p class="text-muted">No features available</p>
                                 </div>
                             `;
                         }
@@ -471,12 +609,31 @@
                         if (specifications && specifications.length > 0) {
                             specificationsHtml = `
                                 <div class="mt-3">
-                                    <h6>Specifications:</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">Specifications:</h6>
+                                        <button class="btn btn-sm btn-success" onclick="addMoreSpecifications(${product.id})">Add More</button>
+                                    </div>
                                     <ul class="list-group">
                                         ${specifications.map(spec => 
-                                            `<li class="list-group-item"><strong>${spec.specName}:</strong> ${spec.specValue}</li>`
+                                            `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span><strong>${spec.specName}:</strong> ${spec.specValue}</span>
+                                                <div>
+                                                    <button class="btn btn-sm btn-info" onclick="editSpecification(${product.id}, ${spec.id}, '${spec.specName.replace(/'/g, "\\'")}', '${spec.specValue.replace(/'/g, "\\'")}')">Edit</button>
+                                                    <button class="btn btn-sm btn-danger" onclick="deleteSpecification(${product.id}, ${spec.id})">Delete</button>
+                                                </div>
+                                            </li>`
                                         ).join('')}
                                     </ul>
+                                </div>
+                            `;
+                        } else {
+                            specificationsHtml = `
+                                <div class="mt-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">Specifications:</h6>
+                                        <button class="btn btn-sm btn-success" onclick="addMoreSpecifications(${product.id})">Add</button>
+                                    </div>
+                                    <p class="text-muted">No specifications available</p>
                                 </div>
                             `;
                         }
@@ -486,12 +643,31 @@
                         if (certifications && certifications.length > 0) {
                             certificationsHtml = `
                                 <div class="mt-3">
-                                    <h6>Certifications:</h6>
-                                    <div>
-                                        ${certifications.map(cert => 
-                                            `<span class="badge bg-info me-1">${cert.name}</span>`
-                                        ).join('')}
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">Certifications:</h6>
+                                        <button class="btn btn-sm btn-success" onclick="addMoreCertifications(${product.id})">Add More</button>
                                     </div>
+                                    <ul class="list-group">
+                                        ${certifications.map(cert => 
+                                            `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>${cert.name}</span>
+                                                <div>
+                                                    <button class="btn btn-sm btn-info" onclick="editCertification(${cert.id}, '${cert.name.replace(/'/g, "\\'")}', '${(cert.description || '').replace(/'/g, "\\'")}')">Edit</button>
+                                                    <button class="btn btn-sm btn-danger" onclick="removeProductCertification(${product.id}, ${cert.id})">Remove</button>
+                                                </div>
+                                            </li>`
+                                        ).join('')}
+                                    </ul>
+                                </div>
+                            `;
+                        } else {
+                            certificationsHtml = `
+                                <div class="mt-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">Certifications:</h6>
+                                        <button class="btn btn-sm btn-success" onclick="addMoreCertifications(${product.id})">Add</button>
+                                    </div>
+                                    <p class="text-muted">No certifications available</p>
                                 </div>
                             `;
                         }
@@ -501,7 +677,10 @@
                         if (weightOptions && weightOptions.length > 0) {
                             weightOptionsHtml = `
                                 <div class="mt-3">
-                                    <h6>Weight Options:</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">Weight Options:</h6>
+                                        <button class="btn btn-sm btn-success" onclick="addMoreWeightOptions(${product.id})">Add More</button>
+                                    </div>
                                     <div class="row">
                                         ${weightOptions.map(option => {
                                             return `
@@ -515,12 +694,18 @@
                                                             <strong>Weight:</strong> ${option.weightValue}g<br>
                                                             <strong>Price:</strong> $${option.price}
                                                         </p>
+                                                        <div class="d-flex gap-1 flex-wrap">
+                                                            <button class="btn btn-sm btn-primary" onclick="editWeightOptionPhoto(${product.id}, ${option.id})">Edit Photo</button>
+                                                            <button class="btn btn-sm btn-info" onclick="editWeightOptionInfo(${product.id}, ${option.id}, ${option.weightValue}, ${option.price})">Edit Info</button>
+                                                            <button class="btn btn-sm btn-danger" onclick="deleteWeightOption(${product.id}, ${option.id})">Delete</button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                             `;
                                         }).join('')}
                                     </div>
+                                    
                                 </div>
                             `;
                         }
@@ -530,7 +715,10 @@
                         if (nutritionalInfo) {
                             nutritionalInfoHtml = `
                                 <div class="mt-3">
-                                    <h6>Nutritional Information:</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">Nutritional Information:</h6>
+                                        <button class="btn btn-sm btn-info" onclick="editNutritionalInfo(${product.id})">Edit Info</button>
+                                    </div>
                                     <div class="card">
                                         <div class="card-body">
                                             <p class="mb-1"><strong>Serving Size:</strong> ${nutritionalInfo.servingSize || 'N/A'}</p>
@@ -559,13 +747,31 @@
                                     </div>
                                 </div>
                             `;
+                        } else {
+                            nutritionalInfoHtml = `
+                                <div class="mt-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">Nutritional Information:</h6>
+                                        <button class="btn btn-sm btn-success" onclick="editNutritionalInfo(${product.id})">Add Info</button>
+                                    </div>
+                                    <p class="text-muted">No nutritional information available</p>
+                                </div>
+                            `;
                         }
                         
                         productCard.innerHTML = `
                             <div class="card product-card">
-                                <img src="${BACKEND_URL}/api/products/${product.id}/image" class="card-img-top product-image" alt="${product.name}">
+                                <div class="position-relative">
+                                    <img src="${BACKEND_URL}/api/products/${product.id}/image" class="card-img-top product-image" alt="${product.name}">
+                                    <button class="btn btn-sm btn-primary position-absolute bottom-0 end-0 m-2" onclick="editProductPhoto(${product.id})">
+                                        <i class="bi bi-pencil"></i> Edit Photo
+                                    </button>
+                                </div>
                                 <div class="card-body">
-                                    <h5 class="card-title">${product.name}</h5>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h5 class="card-title">${product.name}</h5>
+                                        <button class="btn btn-sm btn-info" onclick="editProductBasicInfo(${product.id}, ${JSON.stringify(product).replace(/"/g, '&quot;')})">Edit Details</button>
+                                    </div>
                                     <p class="card-text">${product.description || ''}</p>
                                     <p class="card-text">
                                         <strong>Price:</strong> $${product.pricePerKg}/kg<br>
@@ -677,7 +883,10 @@
                             <div class="card-body">
                                 <h5 class="card-title">${cert.name}</h5>
                                 <p class="card-text">${cert.description || ''}</p>
-                                <button class="btn btn-danger" onclick="deleteCertification(${cert.id})">Delete</button>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-info btn-sm" onclick="editCertification(${cert.id}, '${cert.name.replace(/'/g, "\\'")}', '${(cert.description || '').replace(/'/g, "\\'")}')">Edit</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteCertification(${cert.id})">Delete</button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1142,6 +1351,747 @@
             }
         }
 
+        // Edit weight option photo
+        async function editWeightOptionPhoto(productId, optionId) {
+            // Create a file input element
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            // When a file is selected, upload it
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('packagingImage', file);
+                    
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/weight-options/${optionId}/update-image`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to update weight option photo');
+                    }
+                    
+                    // Show success message
+                    alert('Weight option photo updated successfully');
+                    
+                    // Reload the products to show the updated photo
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error updating weight option photo:', error);
+                    alert('Error updating weight option photo: ' + error.message);
+                }
+            };
+            
+            // Trigger the file selection dialog
+            fileInput.click();
+        }
+
+        // Edit weight option information (weight and price)
+        async function editWeightOptionInfo(productId, optionId, currentWeight, currentPrice) {
+            // Create a modal for editing weight option info
+            const modalId = 'editWeightOptionInfoModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Weight Option</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editWeightOptionForm">
+                                <div class="mb-3">
+                                    <label for="editWeightValue" class="form-label">Weight (grams)</label>
+                                    <input type="number" class="form-control" id="editWeightValue" value="${currentWeight}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editWeightPrice" class="form-label">Price</label>
+                                    <input type="number" class="form-control" id="editWeightPrice" step="0.01" value="${currentPrice}" required>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="saveWeightOptionInfo">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Handle save button click
+            document.getElementById('saveWeightOptionInfo').addEventListener('click', async () => {
+                const weightValue = document.getElementById('editWeightValue').value;
+                const price = document.getElementById('editWeightPrice').value;
+                
+                if (!weightValue || !price) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                
+                try {
+                    // Create a JSON object with the updated information
+                    const updatedData = {
+                        weightValue: parseInt(weightValue),
+                        price: parseFloat(price)
+                    };
+                    
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/weight-options/${optionId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updatedData)
+                    });
+                    
+                    if (!response.ok) {
+                        // If the PUT endpoint doesn't exist or fails, try with a POST request to a different endpoint
+                        // as a fallback option
+                        if (response.status === 404 || response.status === 405) {
+                            const fallbackResponse = await fetchWithAuth(`${API_URL}/products/${productId}/weight-options/${optionId}/update-info`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(updatedData)
+                            });
+                            
+                            if (!fallbackResponse.ok) {
+                                const errorData = await fallbackResponse.text();
+                                throw new Error(errorData || 'Failed to update weight option information');
+                            }
+                        } else {
+                            const errorData = await response.text();
+                            throw new Error(errorData || 'Failed to update weight option information');
+                        }
+                    }
+                    
+                    // Show success message
+                    alert('Weight option information updated successfully');
+                    
+                    // Close the modal
+                    bootstrapModal.hide();
+                    
+                    // Reload the products to show the updated weight options
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error updating weight option information:', error);
+                    alert('Error updating weight option information: ' + error.message);
+                }
+            });
+        }
+
+        // Delete weight option
+        async function deleteWeightOption(productId, optionId) {
+            if (confirm('Are you sure you want to delete this weight option?')) {
+                try {
+                    const response = await fetchWithAuth(`${API_URL}/products/weight-options/${optionId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to delete weight option');
+                    }
+                    
+                    // Show success message
+                    alert('Weight option deleted successfully');
+                    
+                    // Reload the products to show the updated weight options
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error deleting weight option:', error);
+                    alert('Error deleting weight option: ' + error.message);
+                }
+            }
+        }
+
+        // Add more weight options to an existing product
+        async function addMoreWeightOptions(productId) {
+            // Create a modal for adding a new weight option
+            const modalId = 'addWeightOptionModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add New Weight Option</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="newWeightOptionForm">
+                                <div class="mb-3">
+                                    <label for="newWeightValue" class="form-label">Weight (grams)</label>
+                                    <input type="number" class="form-control" id="newWeightValue" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="newWeightPrice" class="form-label">Price</label>
+                                    <input type="number" class="form-control" id="newWeightPrice" step="0.01" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="newPackagingPhoto" class="form-label">Packaging Photo</label>
+                                    <input type="file" class="form-control" id="newPackagingPhoto" accept="image/*">
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="saveNewWeightOption">Save</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Handle save button click
+            document.getElementById('saveNewWeightOption').addEventListener('click', async () => {
+                const weightValue = document.getElementById('newWeightValue').value;
+                const price = document.getElementById('newWeightPrice').value;
+                const packagingPhoto = document.getElementById('newPackagingPhoto').files[0];
+                
+                if (!weightValue || !price) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('weightValue', weightValue);
+                    formData.append('price', price);
+                    if (packagingPhoto) {
+                        formData.append('packagingImage', packagingPhoto);
+                    }
+                    
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/weight-options`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to add new weight option');
+                    }
+                    
+                    // Show success message
+                    alert('New weight option added successfully');
+                    
+                    // Close the modal
+                    bootstrapModal.hide();
+                    
+                    // Reload the products to show the updated weight options
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error adding new weight option:', error);
+                    alert('Error adding new weight option: ' + error.message);
+                }
+            });
+        }
+
+        // Edit product main photo
+        async function editProductPhoto(productId) {
+            // Create a file input element
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            
+            // When a file is selected, upload it
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/update-image`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to update product photo');
+                    }
+                    
+                    // Show success message
+                    alert('Product photo updated successfully');
+                    
+                    // Reload the products to show the updated photo
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error updating product photo:', error);
+                    alert('Error updating product photo: ' + error.message);
+                }
+            };
+            
+            // Trigger the file selection dialog
+            fileInput.click();
+        }
+
+        // Edit nutritional information
+        async function editNutritionalInfo(productId) {
+            // Fetch current nutritional info
+            try {
+                const response = await fetchWithAuth(`${API_URL}/products/${productId}/nutritional-info`);
+                let nutritionalInfo = {};
+                
+                if (response.ok) {
+                    nutritionalInfo = await response.json();
+                }
+                
+                // Create a modal for editing nutritional info
+                const modalId = 'editNutritionalInfoModal';
+                let modal = document.getElementById(modalId);
+                
+                // Remove existing modal if it exists
+                if (modal) {
+                    document.body.removeChild(modal);
+                }
+                
+                // Create new modal
+                modal = document.createElement('div');
+                modal.id = modalId;
+                modal.className = 'modal fade';
+                modal.tabIndex = '-1';
+                modal.role = 'dialog';
+                modal.setAttribute('aria-hidden', 'true');
+                
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Nutritional Information</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="editNutritionalInfoForm">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="editServingSize" class="form-label">Serving Size</label>
+                                            <input type="text" class="form-control" id="editServingSize" value="${nutritionalInfo.servingSize || ''}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="editServingsPerContainer" class="form-label">Servings Per Container</label>
+                                            <input type="text" class="form-control" id="editServingsPerContainer" value="${nutritionalInfo.servingsPerContainer || ''}">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="editCalories" class="form-label">Calories</label>
+                                                <input type="text" class="form-control" id="editCalories" value="${nutritionalInfo.calories || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editTotalFat" class="form-label">Total Fat</label>
+                                                <input type="text" class="form-control" id="editTotalFat" value="${nutritionalInfo.totalFat || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editSaturatedFat" class="form-label">Saturated Fat</label>
+                                                <input type="text" class="form-control" id="editSaturatedFat" value="${nutritionalInfo.saturatedFat || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editTransFat" class="form-label">Trans Fat</label>
+                                                <input type="text" class="form-control" id="editTransFat" value="${nutritionalInfo.transFat || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editCholesterol" class="form-label">Cholesterol</label>
+                                                <input type="text" class="form-control" id="editCholesterol" value="${nutritionalInfo.cholesterol || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editSodium" class="form-label">Sodium</label>
+                                                <input type="text" class="form-control" id="editSodium" value="${nutritionalInfo.sodium || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editTotalCarbohydrates" class="form-label">Total Carbohydrates</label>
+                                                <input type="text" class="form-control" id="editTotalCarbohydrates" value="${nutritionalInfo.totalCarbohydrates || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editDietaryFiber" class="form-label">Dietary Fiber</label>
+                                                <input type="text" class="form-control" id="editDietaryFiber" value="${nutritionalInfo.dietaryFiber || ''}">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="editSugars" class="form-label">Sugars</label>
+                                                <input type="text" class="form-control" id="editSugars" value="${nutritionalInfo.sugars || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editProtein" class="form-label">Protein</label>
+                                                <input type="text" class="form-control" id="editProtein" value="${nutritionalInfo.protein || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editVitaminA" class="form-label">Vitamin A</label>
+                                                <input type="text" class="form-control" id="editVitaminA" value="${nutritionalInfo.vitaminA || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editVitaminC" class="form-label">Vitamin C</label>
+                                                <input type="text" class="form-control" id="editVitaminC" value="${nutritionalInfo.vitaminC || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editCalcium" class="form-label">Calcium</label>
+                                                <input type="text" class="form-control" id="editCalcium" value="${nutritionalInfo.calcium || ''}">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="editIron" class="form-label">Iron</label>
+                                                <input type="text" class="form-control" id="editIron" value="${nutritionalInfo.iron || ''}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="saveNutritionalInfo">Save Changes</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Initialize the Bootstrap modal
+                const bootstrapModal = new bootstrap.Modal(modal);
+                bootstrapModal.show();
+                
+                // Handle save button click
+                document.getElementById('saveNutritionalInfo').addEventListener('click', async () => {
+                    // Collect all nutritional info data
+                    const updatedNutritionalInfo = {
+                        servingSize: document.getElementById('editServingSize').value || null,
+                        servingsPerContainer: document.getElementById('editServingsPerContainer').value || null,
+                        calories: document.getElementById('editCalories').value || null,
+                        totalFat: document.getElementById('editTotalFat').value || null,
+                        saturatedFat: document.getElementById('editSaturatedFat').value || null,
+                        transFat: document.getElementById('editTransFat').value || null,
+                        cholesterol: document.getElementById('editCholesterol').value || null,
+                        sodium: document.getElementById('editSodium').value || null,
+                        totalCarbohydrates: document.getElementById('editTotalCarbohydrates').value || null,
+                        dietaryFiber: document.getElementById('editDietaryFiber').value || null,
+                        sugars: document.getElementById('editSugars').value || null,
+                        protein: document.getElementById('editProtein').value || null,
+                        vitaminA: document.getElementById('editVitaminA').value || null,
+                        vitaminC: document.getElementById('editVitaminC').value || null,
+                        calcium: document.getElementById('editCalcium').value || null,
+                        iron: document.getElementById('editIron').value || null
+                    };
+                    
+                    try {
+                        const response = await fetchWithAuth(`${API_URL}/products/${productId}/nutritional-info`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(updatedNutritionalInfo)
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.text();
+                            throw new Error(errorData || 'Failed to update nutritional information');
+                        }
+                        
+                        // Show success message
+                        alert('Nutritional information updated successfully');
+                        
+                        // Close the modal
+                        bootstrapModal.hide();
+                        
+                        // Reload the products to show the updated nutritional info
+                        await loadProducts();
+                    } catch (error) {
+                        console.error('Error updating nutritional information:', error);
+                        alert('Error updating nutritional information: ' + error.message);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading nutritional information:', error);
+                alert('Error loading nutritional information: ' + error.message);
+            }
+        }
+
+        // Edit feature
+        async function editFeature(productId, featureId, currentFeature) {
+            // Create a modal for editing feature
+            const modalId = 'editFeatureModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Feature</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editFeatureForm">
+                                <div class="mb-3">
+                                    <label for="editFeatureText" class="form-label">Feature</label>
+                                    <input type="text" class="form-control" id="editFeatureText" value="${currentFeature.replace(/"/g, '&quot;')}" required>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="saveFeature">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Handle save button click
+            document.getElementById('saveFeature').addEventListener('click', async () => {
+                const feature = document.getElementById('editFeatureText').value.trim();
+                
+                if (!feature) {
+                    alert('Please enter a feature');
+                    return;
+                }
+                
+                try {
+                    // Try PUT first
+                    const response = await fetchWithAuth(`${API_URL}/products/features/${featureId}?feature=${encodeURIComponent(feature)}`, {
+                        method: 'PUT'
+                    });
+                    
+                    if (!response.ok) {
+                        // If PUT fails, try POST as fallback
+                        if (response.status === 404 || response.status === 405) {
+                            const fallbackResponse = await fetchWithAuth(`${API_URL}/products/features/${featureId}/update?feature=${encodeURIComponent(feature)}`, {
+                                method: 'POST'
+                            });
+                            
+                            if (!fallbackResponse.ok) {
+                                const errorData = await fallbackResponse.text();
+                                throw new Error(errorData || 'Failed to update feature');
+                            }
+                        } else {
+                            const errorData = await response.text();
+                            throw new Error(errorData || 'Failed to update feature');
+                        }
+                    }
+                    
+                    // Show success message
+                    alert('Feature updated successfully');
+                    
+                    // Close the modal
+                    bootstrapModal.hide();
+                    
+                    // Reload the products to show the updated features
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error updating feature:', error);
+                    alert('Error updating feature: ' + error.message);
+                }
+            });
+        }
+
+        // Delete feature
+        async function deleteFeature(productId, featureId) {
+            if (confirm('Are you sure you want to delete this feature?')) {
+                try {
+                    const response = await fetchWithAuth(`${API_URL}/products/features/${featureId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to delete feature');
+                    }
+                    
+                    // Show success message
+                    alert('Feature deleted successfully');
+                    
+                    // Reload the products to show the updated features
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error deleting feature:', error);
+                    alert('Error deleting feature: ' + error.message);
+                }
+            }
+        }
+
+        // Add more features to an existing product
+        async function addMoreFeatures(productId) {
+            // Create a modal for adding new features
+            const modalId = 'addFeaturesModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add New Feature</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="newFeatureForm">
+                                <div class="mb-3">
+                                    <label for="newFeatureText" class="form-label">Feature</label>
+                                    <input type="text" class="form-control" id="newFeatureText" required>
+                                </div>
+                                <div id="addedFeaturesList" class="mt-3"></div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="closeFeatureModal">Close</button>
+                            <button type="button" class="btn btn-primary" id="addNewFeature">Add Feature</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Track added features in this session
+            const addedFeatures = [];
+            const updateAddedFeaturesList = () => {
+                const listElement = document.getElementById('addedFeaturesList');
+                const closeButton = document.getElementById('closeFeatureModal');
+                
+                if (addedFeatures.length === 0) {
+                    listElement.innerHTML = '';
+                    // Change button text to "Close" if no features added
+                    if (closeButton) {
+                        closeButton.textContent = 'Close';
+                    }
+                    return;
+                }
+                
+                // Change button text to "Save" if features were added
+                if (closeButton) {
+                    closeButton.textContent = 'Save';
+                    closeButton.classList.remove('btn-secondary');
+                    closeButton.classList.add('btn-success');
+                }
+                
+                listElement.innerHTML = `
+                    <h6>Added Features:</h6>
+                    <ul class="list-group">
+                        ${addedFeatures.map(feature => `<li class="list-group-item">${feature}</li>`).join('')}
+                    </ul>
+                `;
+            };
+            
+            // Handle add button click
+            document.getElementById('addNewFeature').addEventListener('click', async () => {
+                const feature = document.getElementById('newFeatureText').value.trim();
+                
+                if (!feature) {
+                    alert('Please enter a feature');
+                    return;
+                }
+                
+                try {
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/features?feature=${encodeURIComponent(feature)}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to add feature');
+                    }
+                    
+                    // Add to the list of added features
+                    addedFeatures.push(feature);
+                    updateAddedFeaturesList();
+                    
+                    // Clear the input for next feature
+                    document.getElementById('newFeatureText').value = '';
+                    
+                } catch (error) {
+                    console.error('Error adding feature:', error);
+                    alert('Error adding feature: ' + error.message);
+                }
+            });
+            
+            // Handle modal close - reload products
+            modal.addEventListener('hidden.bs.modal', async () => {
+                if (addedFeatures.length > 0) {
+                    await loadProducts();
+                }
+            });
+        }
+
         // Add new certification
         document.getElementById('certificationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1168,6 +2118,786 @@
         loadProducts();
         loadCategories();
         loadCertifications();
+        checkAuthStatus(); // Check authentication status
+
+        // Edit specification
+        async function editSpecification(productId, specificationId, currentSpecName, currentSpecValue) {
+            // Create a modal for editing specification
+            const modalId = 'editSpecificationModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Specification</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editSpecificationForm">
+                                <div class="mb-3">
+                                    <label for="editSpecName" class="form-label">Specification Name</label>
+                                    <input type="text" class="form-control" id="editSpecName" value="${currentSpecName.replace(/"/g, '&quot;')}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editSpecValue" class="form-label">Specification Value</label>
+                                    <input type="text" class="form-control" id="editSpecValue" value="${currentSpecValue.replace(/"/g, '&quot;')}" required>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="saveSpecification">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Handle save button click
+            document.getElementById('saveSpecification').addEventListener('click', async () => {
+                const specName = document.getElementById('editSpecName').value.trim();
+                const specValue = document.getElementById('editSpecValue').value.trim();
+                
+                if (!specName || !specValue) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                
+                try {
+                    // Try PUT first
+                    const response = await fetchWithAuth(`${API_URL}/products/specifications/${specificationId}?specName=${encodeURIComponent(specName)}&specValue=${encodeURIComponent(specValue)}`, {
+                        method: 'PUT'
+                    });
+                    
+                    if (!response.ok) {
+                        // If PUT fails, try POST as fallback
+                        if (response.status === 404 || response.status === 405) {
+                            const fallbackResponse = await fetchWithAuth(`${API_URL}/products/specifications/${specificationId}/update?specName=${encodeURIComponent(specName)}&specValue=${encodeURIComponent(specValue)}`, {
+                                method: 'POST'
+                            });
+                            
+                            if (!fallbackResponse.ok) {
+                                const errorData = await fallbackResponse.text();
+                                throw new Error(errorData || 'Failed to update specification');
+                            }
+                        } else {
+                            const errorData = await response.text();
+                            throw new Error(errorData || 'Failed to update specification');
+                        }
+                    }
+                    
+                    // Show success message
+                    alert('Specification updated successfully');
+                    
+                    // Close the modal
+                    bootstrapModal.hide();
+                    
+                    // Reload the products to show the updated specifications
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error updating specification:', error);
+                    alert('Error updating specification: ' + error.message);
+                }
+            });
+        }
+
+        // Delete specification
+        async function deleteSpecification(productId, specificationId) {
+            if (confirm('Are you sure you want to delete this specification?')) {
+                try {
+                    const response = await fetchWithAuth(`${API_URL}/products/specifications/${specificationId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to delete specification');
+                    }
+                    
+                    // Show success message
+                    alert('Specification deleted successfully');
+                    
+                    // Reload the products to show the updated specifications
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error deleting specification:', error);
+                    alert('Error deleting specification: ' + error.message);
+                }
+            }
+        }
+
+        // Add more specifications to an existing product
+        async function addMoreSpecifications(productId) {
+            // Create a modal for adding new specifications
+            const modalId = 'addSpecificationsModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add New Specification</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="newSpecificationForm">
+                                <div class="mb-3">
+                                    <label for="newSpecName" class="form-label">Specification Name</label>
+                                    <input type="text" class="form-control" id="newSpecName" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="newSpecValue" class="form-label">Specification Value</label>
+                                    <input type="text" class="form-control" id="newSpecValue" required>
+                                </div>
+                                <div id="addedSpecificationsList" class="mt-3"></div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="closeSpecificationModal">Close</button>
+                            <button type="button" class="btn btn-primary" id="addNewSpecification">Add Specification</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Track added specifications in this session
+            const addedSpecifications = [];
+            const updateAddedSpecificationsList = () => {
+                const listElement = document.getElementById('addedSpecificationsList');
+                const closeButton = document.getElementById('closeSpecificationModal');
+                
+                if (addedSpecifications.length === 0) {
+                    listElement.innerHTML = '';
+                    // Change button text to "Close" if no specifications added
+                    if (closeButton) {
+                        closeButton.textContent = 'Close';
+                        closeButton.classList.remove('btn-success');
+                        closeButton.classList.add('btn-secondary');
+                    }
+                    return;
+                }
+                
+                // Change button text to "Save" if specifications were added
+                if (closeButton) {
+                    closeButton.textContent = 'Save';
+                    closeButton.classList.remove('btn-secondary');
+                    closeButton.classList.add('btn-success');
+                }
+                
+                listElement.innerHTML = `
+                    <h6>Added Specifications:</h6>
+                    <ul class="list-group">
+                        ${addedSpecifications.map(spec => `<li class="list-group-item"><strong>${spec.name}:</strong> ${spec.value}</li>`).join('')}
+                    </ul>
+                `;
+            };
+            
+            // Handle add button click
+            document.getElementById('addNewSpecification').addEventListener('click', async () => {
+                const specName = document.getElementById('newSpecName').value.trim();
+                const specValue = document.getElementById('newSpecValue').value.trim();
+                
+                if (!specName || !specValue) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                
+                try {
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/specifications?specName=${encodeURIComponent(specName)}&specValue=${encodeURIComponent(specValue)}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to add specification');
+                    }
+                    
+                    // Add to the list of added specifications
+                    addedSpecifications.push({name: specName, value: specValue});
+                    updateAddedSpecificationsList();
+                    
+                    // Clear the inputs for next specification
+                    document.getElementById('newSpecName').value = '';
+                    document.getElementById('newSpecValue').value = '';
+                    
+                } catch (error) {
+                    console.error('Error adding specification:', error);
+                    alert('Error adding specification: ' + error.message);
+                }
+            });
+            
+            // Handle modal close - reload products
+            modal.addEventListener('hidden.bs.modal', async () => {
+                if (addedSpecifications.length > 0) {
+                    await loadProducts();
+                }
+            });
+        }
+
+        // Add more certifications to an existing product
+        async function addMoreCertifications(productId) {
+            // Create a modal for adding new certifications
+            const modalId = 'addCertificationsModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            // First load available certifications
+            let certifications = [];
+            try {
+                const response = await fetchWithAuth(`${API_URL}/certifications`);
+                if (response.ok) {
+                    certifications = await response.json();
+                } else {
+                    throw new Error('Failed to load certifications');
+                }
+            } catch (error) {
+                console.error('Error loading certifications:', error);
+                alert('Error loading certifications: ' + error.message);
+                return;
+            }
+            
+            // Get current product certifications to avoid adding duplicates
+            let currentCertifications = [];
+            try {
+                const response = await fetchWithAuth(`${API_URL}/products/${productId}/certifications`);
+                if (response.ok) {
+                    currentCertifications = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading current certifications:', error);
+            }
+            
+            // Filter out certifications that are already added
+            const availableCertifications = certifications.filter(cert => 
+                !currentCertifications.some(currentCert => currentCert.id === cert.id)
+            );
+            
+            if (availableCertifications.length === 0) {
+                alert('All available certifications have already been added to this product.');
+                return;
+            }
+            
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add Certifications</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="addCertificationsForm">
+                                <div class="mb-3">
+                                    <label for="certificationSelect" class="form-label">Select Certification</label>
+                                    <select class="form-control" id="certificationSelectModal">
+                                        ${availableCertifications.map(cert => 
+                                            `<option value="${cert.id}">${cert.name}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                <div id="addedCertificationsList" class="mt-3"></div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="closeCertificationModal">Close</button>
+                            <button type="button" class="btn btn-primary" id="addCertificationToProduct">Add Certification</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Track added certifications in this session
+            const addedCertifications = [];
+            const updateAddedCertificationsList = () => {
+                const listElement = document.getElementById('addedCertificationsList');
+                const closeButton = document.getElementById('closeCertificationModal');
+                
+                if (addedCertifications.length === 0) {
+                    listElement.innerHTML = '';
+                    // Change button text to "Close" if no certifications added
+                    if (closeButton) {
+                        closeButton.textContent = 'Close';
+                        closeButton.classList.remove('btn-success');
+                        closeButton.classList.add('btn-secondary');
+                    }
+                    return;
+                }
+                
+                // Change button text to "Save" if certifications were added
+                if (closeButton) {
+                    closeButton.textContent = 'Save';
+                    closeButton.classList.remove('btn-secondary');
+                    closeButton.classList.add('btn-success');
+                }
+                
+                listElement.innerHTML = `
+                    <h6>Added Certifications:</h6>
+                    <ul class="list-group">
+                        ${addedCertifications.map(cert => `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${cert.name}
+                                <button class="btn btn-sm btn-danger" onclick="removeAddedCertFromList(${cert.id})" type="button">Remove</button>
+                            </li>
+                        `).join('')}
+                    </ul>
+                `;
+            };
+            
+            // Global function to remove certification from the list in the modal
+            window.removeAddedCertFromList = function(certId) {
+                const index = addedCertifications.findIndex(c => c.id == certId);
+                if (index !== -1) {
+                    const removedCert = addedCertifications.splice(index, 1)[0];
+                    
+                    // Add the option back to the select dropdown
+                    const select = document.getElementById('certificationSelectModal');
+                    const option = document.createElement('option');
+                    option.value = removedCert.id;
+                    option.textContent = removedCert.name;
+                    select.appendChild(option);
+                    
+                    // Re-enable the add button if it was disabled
+                    document.getElementById('addCertificationToProduct').disabled = false;
+                    
+                    updateAddedCertificationsList();
+                }
+            };
+            
+            // Handle add button click
+            document.getElementById('addCertificationToProduct').addEventListener('click', async () => {
+                const select = document.getElementById('certificationSelectModal');
+                if (!select) {
+                    console.error('Certification select dropdown not found');
+                    alert('Error: Certification select dropdown not found');
+                    return;
+                }
+                
+                const certId = select.value;
+                const certName = select.options[select.selectedIndex]?.text;
+                
+                if (!certId || !certName) {
+                    console.error('No certification selected', { certId, certName, options: select.options.length });
+                    alert('Please select a certification');
+                    return;
+                }
+                
+                try {
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/certifications/${certId}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to add certification');
+                    }
+                    
+                    // Add to the list of added certifications
+                    addedCertifications.push({id: certId, name: certName});
+                    updateAddedCertificationsList();
+                    
+                    // Remove the added certification from the dropdown
+                    const option = select.querySelector(`option[value="${certId}"]`);
+                    if (option) {
+                        select.removeChild(option);
+                    }
+                    
+                    // If no more certifications are available, disable the add button
+                    if (select.options.length === 0) {
+                        document.getElementById('addCertificationToProduct').disabled = true;
+                        select.innerHTML = '<option value="">No more certifications available</option>';
+                    }
+                    
+                } catch (error) {
+                    console.error('Error adding certification:', error);
+                    alert('Error adding certification: ' + error.message);
+                }
+            });
+            
+            // Handle modal close - reload products
+            modal.addEventListener('hidden.bs.modal', async () => {
+                if (addedCertifications.length > 0) {
+                    await loadProducts();
+                }
+            });
+        }
+
+        // Edit basic product information
+        async function editProductBasicInfo(productId, productData) {
+            // Create a modal for editing product basic info
+            const modalId = 'editProductBasicInfoModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Load categories for the dropdown
+            let categories = [];
+            try {
+                const response = await fetchWithAuth(`${API_URL}/categories`);
+                if (response.ok) {
+                    categories = await response.json();
+                } else {
+                    throw new Error('Failed to load categories');
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                alert('Error loading categories: ' + error.message);
+                return;
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Product Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editProductBasicInfoForm">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="editProductName" class="form-label">Product Name</label>
+                                        <input type="text" class="form-control" id="editProductName" value="${productData.name.replace(/"/g, '&quot;')}" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="editProductCategory" class="form-label">Category</label>
+                                        <select class="form-control" id="editProductCategory" required>
+                                            <option value="">Select Category</option>
+                                            ${categories.map(category => 
+                                                `<option value="${category.id}" ${productData.category && productData.category.id === category.id ? 'selected' : ''}>${category.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editProductDescription" class="form-label">Description</label>
+                                    <textarea class="form-control" id="editProductDescription" rows="3">${productData.description || ''}</textarea>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="editProductPrice" class="form-label">Price per KG</label>
+                                        <input type="number" class="form-control" id="editProductPrice" step="0.01" value="${productData.pricePerKg}" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="editProductInventory" class="form-label">Inventory</label>
+                                        <input type="number" class="form-control" id="editProductInventory" value="${productData.inventory}" required>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="editProductNewArrival" ${productData.isNewArrival ? 'checked' : ''}>
+                                            <label class="form-check-label" for="editProductNewArrival">New Arrival</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="editProductBestSeller" ${productData.isBestSeller ? 'checked' : ''}>
+                                            <label class="form-check-label" for="editProductBestSeller">Best Seller</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="editProductHasDiscount" ${productData.hasDiscount ? 'checked' : ''} onchange="toggleDiscountField()">
+                                            <label class="form-check-label" for="editProductHasDiscount">Has Discount</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3" id="discountPercentageField" style="display: ${productData.hasDiscount ? 'block' : 'none'}">
+                                    <label for="editProductDiscountPercentage" class="form-label">Discount Percentage</label>
+                                    <input type="number" class="form-control" id="editProductDiscountPercentage" min="0" max="100" value="${productData.discountPercentage || 0}">
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="saveProductBasicInfo">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Function to toggle discount percentage field
+            window.toggleDiscountField = function() {
+                const hasDiscount = document.getElementById('editProductHasDiscount').checked;
+                document.getElementById('discountPercentageField').style.display = hasDiscount ? 'block' : 'none';
+            };
+            
+            // Handle save button click
+            document.getElementById('saveProductBasicInfo').addEventListener('click', async () => {
+                const name = document.getElementById('editProductName').value.trim();
+                const categoryId = document.getElementById('editProductCategory').value;
+                const description = document.getElementById('editProductDescription').value.trim();
+                const pricePerKg = document.getElementById('editProductPrice').value;
+                const inventory = document.getElementById('editProductInventory').value;
+                const isNewArrival = document.getElementById('editProductNewArrival').checked;
+                const isBestSeller = document.getElementById('editProductBestSeller').checked;
+                const hasDiscount = document.getElementById('editProductHasDiscount').checked;
+                const discountPercentage = document.getElementById('editProductDiscountPercentage').value;
+                
+                if (!name || !categoryId || !pricePerKg || !inventory) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+                
+                try {
+                    const productUpdateData = {
+                        name: name,
+                        categoryId: categoryId,
+                        description: description,
+                        pricePerKg: parseFloat(pricePerKg),
+                        inventory: parseInt(inventory),
+                        isNewArrival: isNewArrival,
+                        isBestSeller: isBestSeller,
+                        hasDiscount: hasDiscount,
+                        discountPercentage: hasDiscount ? parseInt(discountPercentage) : 0
+                    };
+                    
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/update-basic-info`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(productUpdateData)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to update product information');
+                    }
+                    
+                    // Show success message
+                    alert('Product information updated successfully');
+                    
+                    // Close the modal
+                    bootstrapModal.hide();
+                    
+                    // Check if we need to update the featured products
+                    if (isNewArrival || isBestSeller) {
+                        await fetchWithAuth(`${API_URL}/products/featured`, {
+                            method: 'POST'
+                        });
+                    }
+                    
+                    // Reload the products to show the updated information
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error updating product information:', error);
+                    alert('Error updating product information: ' + error.message);
+                }
+            });
+        }
+
+        // Edit certification
+        async function editCertification(certId, certName, certDescription) {
+            // Create a modal for editing certification
+            const modalId = 'editCertificationModal';
+            let modal = document.getElementById(modalId);
+            
+            // Remove existing modal if it exists
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+            
+            // Create new modal
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.tabIndex = '-1';
+            modal.role = 'dialog';
+            modal.setAttribute('aria-hidden', 'true');
+            
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Certification</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editCertificationForm">
+                                <div class="mb-3">
+                                    <label for="editCertificationName" class="form-label">Name</label>
+                                    <input type="text" class="form-control" id="editCertificationName" value="${certName.replace(/"/g, '&quot;')}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editCertificationDescription" class="form-label">Description</label>
+                                    <textarea class="form-control" id="editCertificationDescription" rows="3">${certDescription || ''}</textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="saveCertification">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize the Bootstrap modal
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            // Handle save button click
+            document.getElementById('saveCertification').addEventListener('click', async () => {
+                const name = document.getElementById('editCertificationName').value.trim();
+                const description = document.getElementById('editCertificationDescription').value.trim();
+                
+                if (!name) {
+                    alert('Certification name is required');
+                    return;
+                }
+                
+                try {
+                    const certificationData = {
+                        id: certId,
+                        name: name,
+                        description: description
+                    };
+                    
+                    // Try PUT first
+                    const response = await fetchWithAuth(`${API_URL}/certifications/${certId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(certificationData)
+                    });
+                    
+                    if (!response.ok) {
+                        // If PUT fails, try POST as fallback
+                        if (response.status === 404 || response.status === 405) {
+                            const fallbackResponse = await fetchWithAuth(`${API_URL}/certifications/${certId}/update`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(certificationData)
+                            });
+                            
+                            if (!fallbackResponse.ok) {
+                                const errorData = await fallbackResponse.text();
+                                throw new Error(errorData || 'Failed to update certification');
+                            }
+                        } else {
+                            const errorData = await response.text();
+                            throw new Error(errorData || 'Failed to update certification');
+                        }
+                    }
+                    
+                    // Show success message
+                    alert('Certification updated successfully');
+                    
+                    // Close the modal
+                    bootstrapModal.hide();
+                    
+                    // Reload certifications and products to show the updated information
+                    await loadCertifications();
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error updating certification:', error);
+                    alert('Error updating certification: ' + error.message);
+                }
+            });
+        }
+
+        // Remove product certification
+        async function removeProductCertification(productId, certificationId) {
+            if (confirm('Are you sure you want to remove this certification from the product?')) {
+                try {
+                    const response = await fetchWithAuth(`${API_URL}/products/${productId}/certifications/${certificationId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        throw new Error(errorData || 'Failed to remove certification from product');
+                    }
+                    
+                    // Show success message
+                    alert('Certification removed from product successfully');
+                    
+                    // Reload the products to show the updated certifications
+                    await loadProducts();
+                } catch (error) {
+                    console.error('Error removing certification from product:', error);
+                    alert('Error removing certification from product: ' + error.message);
+                }
+            }
+        }
     </script>
 </body>
 </html> 

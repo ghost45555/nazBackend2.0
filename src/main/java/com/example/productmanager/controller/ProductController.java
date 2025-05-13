@@ -30,6 +30,8 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
+import java.math.BigDecimal;
+import com.example.productmanager.repository.CategoryRepository;
 
 @RestController
 @RequestMapping("/api/products")
@@ -44,6 +46,9 @@ public class ProductController {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     @GetMapping
     public ResponseEntity<?> getAllProducts() {
@@ -161,6 +166,37 @@ public class ProductController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Updates an existing product feature
+     *
+     * @param featureId the ID of the feature to update
+     * @param feature the new feature text
+     * @return the ResponseEntity with status 200 (OK) and the updated feature
+     */
+    @PutMapping("/features/{featureId}")
+    public ResponseEntity<?> updateProductFeature(
+            @PathVariable Long featureId,
+            @RequestParam String feature) {
+        try {
+            ProductFeature updatedFeature = productService.updateProductFeature(featureId, feature);
+            return ResponseEntity.ok(updatedFeature);
+        } catch (Exception e) {
+            logger.error("Error updating feature with id: " + featureId, e);
+            return ResponseEntity.internalServerError()
+                .body("Error updating feature: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Alternative endpoint for updating a product feature (for clients that don't support PUT)
+     */
+    @PostMapping("/features/{featureId}/update")
+    public ResponseEntity<?> updateProductFeaturePost(
+            @PathVariable Long featureId,
+            @RequestParam String feature) {
+        return updateProductFeature(featureId, feature);
+    }
+
     // Product Specifications endpoints
     @GetMapping("/{productId}/specifications")
     public List<ProductSpecification> getProductSpecifications(@PathVariable Long productId) {
@@ -179,6 +215,40 @@ public class ProductController {
     public ResponseEntity<?> deleteProductSpecification(@PathVariable Long specificationId) {
         productService.deleteProductSpecification(specificationId);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Updates an existing product specification
+     *
+     * @param specificationId the ID of the specification to update
+     * @param specName the new specification name
+     * @param specValue the new specification value
+     * @return the ResponseEntity with status 200 (OK) and the updated specification
+     */
+    @PutMapping("/specifications/{specificationId}")
+    public ResponseEntity<?> updateProductSpecification(
+            @PathVariable Long specificationId,
+            @RequestParam String specName,
+            @RequestParam String specValue) {
+        try {
+            ProductSpecification updatedSpec = productService.updateProductSpecification(specificationId, specName, specValue);
+            return ResponseEntity.ok(updatedSpec);
+        } catch (Exception e) {
+            logger.error("Error updating specification with id: " + specificationId, e);
+            return ResponseEntity.internalServerError()
+                .body("Error updating specification: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Alternative endpoint for updating a product specification (for clients that don't support PUT)
+     */
+    @PostMapping("/specifications/{specificationId}/update")
+    public ResponseEntity<?> updateProductSpecificationPost(
+            @PathVariable Long specificationId,
+            @RequestParam String specName,
+            @RequestParam String specValue) {
+        return updateProductSpecification(specificationId, specName, specValue);
     }
 
     // Product Certifications endpoints
@@ -300,6 +370,166 @@ public class ProductController {
     }
 
     /**
+     * PUT /api/products/{productId}/weight-options/{optionId}/image : Updates the packaging photo for a product weight option.
+     *
+     * @param productId the ID of the product
+     * @param optionId the ID of the weight option to update
+     * @param packagingImage the new packaging image
+     * @return the ResponseEntity with status 200 (OK) if successful, or error status
+     */
+    @PutMapping(value = "/{productId}/weight-options/{optionId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateWeightOptionImage(
+            @PathVariable Long productId,
+            @PathVariable Long optionId,
+            @RequestParam("packagingImage") MultipartFile packagingImage) {
+        try {
+            logger.info("Updating packaging photo for weight option ID: {} of product ID: {}", optionId, productId);
+            
+            ProductWeightOption updatedOption = productService.updateWeightOptionImage(productId, optionId, packagingImage);
+            return ResponseEntity.ok(updatedOption);
+        } catch (EntityNotFoundException e) {
+            logger.error("Weight option not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IOException e) {
+            logger.error("Error processing image for weight option ID: {}", optionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error processing image: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error updating weight option image for ID: {}", optionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error updating weight option image: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Alternative endpoint that accepts POST method for updating weight option images.
+     * This is provided for compatibility with clients that may not support PUT requests.
+     */
+    @PostMapping(value = "/{productId}/weight-options/{optionId}/update-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateWeightOptionImagePost(
+            @PathVariable Long productId,
+            @PathVariable Long optionId,
+            @RequestParam("packagingImage") MultipartFile packagingImage) {
+        try {
+            logger.info("Updating packaging photo via POST for weight option ID: {} of product ID: {}", optionId, productId);
+            
+            ProductWeightOption updatedOption = productService.updateWeightOptionImage(productId, optionId, packagingImage);
+            return ResponseEntity.ok(updatedOption);
+        } catch (EntityNotFoundException e) {
+            logger.error("Weight option not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IOException e) {
+            logger.error("Error processing image for weight option ID: {}", optionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error processing image: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error updating weight option image for ID: {}", optionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error updating weight option image: " + e.getMessage());
+        }
+    }
+
+    /**
+     * PUT /api/products/{productId}/weight-options/{optionId} : Updates the weight and price for a product weight option.
+     *
+     * @param productId the ID of the product
+     * @param optionId the ID of the weight option to update
+     * @param weightOptionData the new weight option data containing weightValue and price
+     * @return the ResponseEntity with status 200 (OK) if successful, or error status
+     */
+    @PutMapping(value = "/{productId}/weight-options/{optionId}")
+    public ResponseEntity<?> updateWeightOption(
+            @PathVariable Long productId,
+            @PathVariable Long optionId,
+            @RequestBody Map<String, Object> weightOptionData) {
+        try {
+            logger.info("Updating weight option info for ID: {} of product ID: {}", optionId, productId);
+            logger.debug("Weight option data: {}", weightOptionData);
+            
+            // Extract weightValue and price from the request body
+            Integer weightValue = null;
+            BigDecimal price = null;
+            
+            if (weightOptionData.containsKey("weightValue")) {
+                if (weightOptionData.get("weightValue") instanceof Integer) {
+                    weightValue = (Integer) weightOptionData.get("weightValue");
+                } else if (weightOptionData.get("weightValue") instanceof String) {
+                    weightValue = Integer.parseInt((String) weightOptionData.get("weightValue"));
+                } else if (weightOptionData.get("weightValue") instanceof Number) {
+                    weightValue = ((Number) weightOptionData.get("weightValue")).intValue();
+                }
+            }
+            
+            if (weightOptionData.containsKey("price")) {
+                if (weightOptionData.get("price") instanceof BigDecimal) {
+                    price = (BigDecimal) weightOptionData.get("price");
+                } else if (weightOptionData.get("price") instanceof String) {
+                    price = new BigDecimal((String) weightOptionData.get("price"));
+                } else if (weightOptionData.get("price") instanceof Number) {
+                    price = BigDecimal.valueOf(((Number) weightOptionData.get("price")).doubleValue());
+                }
+            }
+            
+            if (weightValue == null || price == null) {
+                return ResponseEntity.badRequest().body("Weight value and price are required");
+            }
+            
+            ProductWeightOption updatedOption = productService.updateWeightOptionInfo(productId, optionId, weightValue, price);
+            return ResponseEntity.ok(updatedOption);
+        } catch (EntityNotFoundException e) {
+            logger.error("Weight option not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error updating weight option info for ID: {}", optionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error updating weight option info: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Alternative endpoint that accepts POST method for updating weight option info.
+     * This is provided for compatibility with clients that may not support PUT requests.
+     */
+    @PostMapping(value = "/{productId}/weight-options/{optionId}/update-info")
+    public ResponseEntity<?> updateWeightOptionInfoPost(
+            @PathVariable Long productId,
+            @PathVariable Long optionId,
+            @RequestBody Map<String, Object> weightOptionData) {
+        logger.info("Updating weight option info via POST for ID: {} of product ID: {}", optionId, productId);
+        return updateWeightOption(productId, optionId, weightOptionData);
+    }
+
+    /**
+     * POST /api/products/{productId}/update-image : Updates the main product image.
+     *
+     * @param productId the ID of the product
+     * @param image the new product image
+     * @return the ResponseEntity with status 200 (OK) if successful, or error status
+     */
+    @PostMapping(value = "/{productId}/update-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateProductImage(
+            @PathVariable Long productId,
+            @RequestParam("image") MultipartFile image) {
+        try {
+            logger.info("Updating main image for product ID: {}", productId);
+            
+            Product updatedProduct = productService.updateProductImage(productId, image);
+            return ResponseEntity.ok(updatedProduct);
+        } catch (EntityNotFoundException e) {
+            logger.error("Product not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IOException e) {
+            logger.error("Error processing image for product ID: {}", productId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error processing image: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error updating product image for ID: {}", productId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error updating product image: " + e.getMessage());
+        }
+    }
+
+    /**
      * GET /api/products/admin/{productId} : Get full product details for editing by admin.
      *
      * @param productId the ID of the product to retrieve.
@@ -360,6 +590,151 @@ public class ProductController {
             logger.error("Error updating product with id {}: {}", productId, e.getMessage(), e);
             // Consider a more specific error response DTO
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal error updating product.");
+        }
+    }
+
+    /**
+     * POST /api/products/featured : Update featured products (new arrivals and best sellers)
+     * This endpoint is called when a product is marked as a new arrival or best seller
+     */
+    @PostMapping("/featured")
+    public ResponseEntity<?> updateFeaturedProducts() {
+        try {
+            logger.info("Updating featured products");
+            // No specific implementation needed - this endpoint is just to confirm the action
+            return ResponseEntity.ok(Map.of("message", "Featured products updated successfully"));
+        } catch (Exception e) {
+            logger.error("Error updating featured products", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error updating featured products: " + e.getMessage());
+        }
+    }
+
+    /**
+     * POST /api/products/{productId}/update-basic-info : Updates the basic information of a product.
+     *
+     * @param productId the ID of the product
+     * @param productData the product data containing name, description, pricePerKg, inventory, etc.
+     * @return the ResponseEntity with status 200 (OK) if successful, or error status
+     */
+    @PostMapping("/{productId}/update-basic-info")
+    public ResponseEntity<?> updateProductBasicInfo(
+            @PathVariable Long productId,
+            @RequestBody Map<String, Object> productData) {
+        try {
+            logger.info("Updating basic info for product ID: {}", productId);
+            logger.debug("Product data: {}", productData);
+            
+            // Find the product
+            Product product = productService.getProduct(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+            
+            // Update fields if provided
+            if (productData.containsKey("name")) {
+                product.setName((String) productData.get("name"));
+            }
+            
+            if (productData.containsKey("description")) {
+                product.setDescription((String) productData.get("description"));
+            }
+            
+            if (productData.containsKey("pricePerKg")) {
+                Object priceObj = productData.get("pricePerKg");
+                BigDecimal price;
+                
+                if (priceObj instanceof BigDecimal) {
+                    price = (BigDecimal) priceObj;
+                } else if (priceObj instanceof String) {
+                    price = new BigDecimal((String) priceObj);
+                } else if (priceObj instanceof Number) {
+                    price = BigDecimal.valueOf(((Number) priceObj).doubleValue());
+                } else {
+                    return ResponseEntity.badRequest().body("Invalid price format");
+                }
+                
+                product.setPricePerKg(price);
+            }
+            
+            if (productData.containsKey("inventory")) {
+                Object inventoryObj = productData.get("inventory");
+                Integer inventory;
+                
+                if (inventoryObj instanceof Integer) {
+                    inventory = (Integer) inventoryObj;
+                } else if (inventoryObj instanceof String) {
+                    inventory = Integer.parseInt((String) inventoryObj);
+                } else if (inventoryObj instanceof Number) {
+                    inventory = ((Number) inventoryObj).intValue();
+                } else {
+                    return ResponseEntity.badRequest().body("Invalid inventory format");
+                }
+                
+                product.setInventory(inventory);
+            }
+            
+            if (productData.containsKey("categoryId")) {
+                Object categoryIdObj = productData.get("categoryId");
+                Long categoryId;
+                
+                if (categoryIdObj instanceof Long) {
+                    categoryId = (Long) categoryIdObj;
+                } else if (categoryIdObj instanceof Integer) {
+                    categoryId = ((Integer) categoryIdObj).longValue();
+                } else if (categoryIdObj instanceof String) {
+                    categoryId = Long.parseLong((String) categoryIdObj);
+                } else if (categoryIdObj instanceof Number) {
+                    categoryId = ((Number) categoryIdObj).longValue();
+                } else {
+                    return ResponseEntity.badRequest().body("Invalid category ID format");
+                }
+                
+                Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + categoryId));
+                product.setCategory(category);
+            }
+            
+            if (productData.containsKey("isNewArrival")) {
+                product.setIsNewArrival((Boolean) productData.get("isNewArrival"));
+            }
+            
+            if (productData.containsKey("isBestSeller")) {
+                product.setIsBestSeller((Boolean) productData.get("isBestSeller"));
+            }
+            
+            if (productData.containsKey("hasDiscount")) {
+                product.setHasDiscount((Boolean) productData.get("hasDiscount"));
+            }
+            
+            if (productData.containsKey("discountPercentage")) {
+                Object discountObj = productData.get("discountPercentage");
+                Integer discount;
+                
+                if (discountObj instanceof Integer) {
+                    discount = (Integer) discountObj;
+                } else if (discountObj instanceof String) {
+                    discount = Integer.parseInt((String) discountObj);
+                } else if (discountObj instanceof Number) {
+                    discount = ((Number) discountObj).intValue();
+                } else {
+                    return ResponseEntity.badRequest().body("Invalid discount percentage format");
+                }
+                
+                product.setDiscountPercentage(discount);
+            }
+            
+            // Save the updated product
+            Product updatedProduct = productService.saveProduct(product, null);
+            return ResponseEntity.ok(updatedProduct);
+        } catch (EntityNotFoundException e) {
+            logger.error("Entity not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (NumberFormatException e) {
+            logger.error("Invalid number format: {}", e.getMessage());
+            return ResponseEntity.badRequest().body("Invalid number format: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error updating product basic info for ID: {}", productId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error updating product info: " + e.getMessage());
         }
     }
 } 

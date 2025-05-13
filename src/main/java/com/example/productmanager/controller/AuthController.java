@@ -176,6 +176,32 @@ public class AuthController {
         return ResponseEntity.ok(new JwtResponse(null, null, user.getUsername(), user.getEmail()));
     }
 
+    /**
+     * GET /api/auth/check-admin : Check if the current user has ADMIN role
+     * 
+     * @param authentication the current authentication
+     * @return the ResponseEntity with status 200 (OK) and with body containing the admin status
+     */
+    @GetMapping("/check-admin")
+    public ResponseEntity<?> checkAdminStatus(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            // Not authenticated
+            return ResponseEntity.ok(Map.of("isAuthenticated", false, "isAdmin", false));
+        }
+        
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        
+        // Log the check
+        logger.info("Admin check for user {}: {}", authentication.getName(), isAdmin);
+        
+        return ResponseEntity.ok(Map.of(
+            "isAuthenticated", true, 
+            "isAdmin", isAdmin,
+            "username", authentication.getName()
+        ));
+    }
+
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Map<String, Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
