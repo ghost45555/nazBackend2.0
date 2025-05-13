@@ -19,6 +19,7 @@ public class ProductDTO {
     private String categoryName; // Added for display purposes on edit form
     private Boolean isNewArrival;
     private Boolean isBestSeller;
+    private Boolean isFeatured;
     private BigDecimal pricePerKg; // Assuming this field exists in your 'products' table
     private Boolean hasDiscount;
     private Integer discountPercentage;

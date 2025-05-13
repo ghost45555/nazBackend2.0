@@ -146,14 +146,20 @@
                                     </div>
                                     <div class="col-md-3 mb-3">
                                         <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="isFeatured">
+                                            <label class="form-check-label" for="isFeatured">Featured</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="hasDiscount">
                                             <label class="form-check-label" for="hasDiscount">Has Discount</label>
                                         </div>
                                     </div>
-                                    <div class="col-md-3 mb-3">
-                                        <label for="discountPercentage" class="form-label">Discount %</label>
-                                        <input type="number" class="form-control" id="discountPercentage" min="0" max="100">
-                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="discountPercentage" class="form-label">Discount %</label>
+                                    <input type="number" class="form-control" id="discountPercentage" min="0" max="100">
                                 </div>
 
                                 <!-- Features Section -->
@@ -778,7 +784,8 @@
                                         <strong>Inventory:</strong> ${product.inventory}<br>
                                         ${product.hasDiscount ? `<strong>Discount:</strong> ${product.discountPercentage}%<br>` : ''}
                                         ${product.isNewArrival ? '<span class="badge bg-success">New Arrival</span> ' : ''}
-                                        ${product.isBestSeller ? '<span class="badge bg-warning">Best Seller</span>' : ''}
+                                        ${product.isBestSeller ? '<span class="badge bg-warning">Best Seller</span> ' : ''}
+                                        ${product.isFeatured ? '<span class="badge bg-info">Featured</span>' : ''}
                                     </p>
                                     ${featuresHtml}
                                     ${specificationsHtml}
@@ -1060,6 +1067,7 @@
             const inventory = document.getElementById('inventory').value;
             const isNewArrival = document.getElementById('isNewArrival').checked;
             const isBestSeller = document.getElementById('isBestSeller').checked;
+            const isFeatured = document.getElementById('isFeatured').checked;
             const hasDiscount = document.getElementById('hasDiscount').checked;
             const discountPercentage = document.getElementById('discountPercentage').value || '0';
             const productImageFile = document.getElementById('productImage').files[0];
@@ -1097,6 +1105,7 @@
                 formData.append('inventory', inventory);
                 formData.append('isNewArrival', isNewArrival);
                 formData.append('isBestSeller', isBestSeller);
+                formData.append('isFeatured', isFeatured);
                 formData.append('hasDiscount', hasDiscount);
                 formData.append('discountPercentage', discountPercentage);
                 if (productImageFile) {
@@ -1240,7 +1249,7 @@
                 await loadProducts();
                 
                 // Check if we need to update the featured products
-                if (isNewArrival || isBestSeller) {
+                if (isNewArrival || isBestSeller || isFeatured) {
                     await fetchWithAuth(`${API_URL}/products/featured`, {
                         method: 'POST'
                     });
@@ -2663,6 +2672,14 @@
                                     </div>
                                     <div class="col-md-4">
                                         <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="editProductFeatured" ${productData.isFeatured ? 'checked' : ''}>
+                                            <label class="form-check-label" for="editProductFeatured">Featured</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
                                             <input class="form-check-input" type="checkbox" id="editProductHasDiscount" ${productData.hasDiscount ? 'checked' : ''} onchange="toggleDiscountField()">
                                             <label class="form-check-label" for="editProductHasDiscount">Has Discount</label>
                                         </div>
@@ -2703,6 +2720,7 @@
                 const inventory = document.getElementById('editProductInventory').value;
                 const isNewArrival = document.getElementById('editProductNewArrival').checked;
                 const isBestSeller = document.getElementById('editProductBestSeller').checked;
+                const isFeatured = document.getElementById('editProductFeatured').checked;
                 const hasDiscount = document.getElementById('editProductHasDiscount').checked;
                 const discountPercentage = document.getElementById('editProductDiscountPercentage').value;
                 
@@ -2720,6 +2738,7 @@
                         inventory: parseInt(inventory),
                         isNewArrival: isNewArrival,
                         isBestSeller: isBestSeller,
+                        isFeatured: isFeatured,
                         hasDiscount: hasDiscount,
                         discountPercentage: hasDiscount ? parseInt(discountPercentage) : 0
                     };
@@ -2744,7 +2763,7 @@
                     bootstrapModal.hide();
                     
                     // Check if we need to update the featured products
-                    if (isNewArrival || isBestSeller) {
+                    if (isNewArrival || isBestSeller || isFeatured) {
                         await fetchWithAuth(`${API_URL}/products/featured`, {
                             method: 'POST'
                         });

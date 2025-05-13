@@ -82,6 +82,7 @@ public class ProductController {
             @RequestParam("inventory") Integer inventory,
             @RequestParam(value = "isNewArrival", required = false) Boolean isNewArrival,
             @RequestParam(value = "isBestSeller", required = false) Boolean isBestSeller,
+            @RequestParam(value = "isFeatured", required = false) Boolean isFeatured,
             @RequestParam(value = "hasDiscount", required = false) Boolean hasDiscount,
             @RequestParam(value = "discountPercentage", required = false) Integer discountPercentage,
             @RequestParam(value = "image", required = false) MultipartFile image) {
@@ -95,6 +96,7 @@ public class ProductController {
             product.setInventory(inventory);
             product.setIsNewArrival(isNewArrival != null ? isNewArrival : false);
             product.setIsBestSeller(isBestSeller != null ? isBestSeller : false);
+            product.setIsFeatured(isFeatured != null ? isFeatured : false);
             product.setHasDiscount(hasDiscount != null ? hasDiscount : false);
             product.setDiscountPercentage(discountPercentage);
 
@@ -136,6 +138,11 @@ public class ProductController {
     @GetMapping("/best-sellers")
     public List<Product> getBestSellers() {
         return productService.getBestSellers();
+    }
+
+    @GetMapping("/featured")
+    public List<Product> getFeaturedProducts() {
+        return productService.getFeaturedProducts();
     }
 
     @GetMapping("/{id}/image")
@@ -699,6 +706,10 @@ public class ProductController {
             
             if (productData.containsKey("isBestSeller")) {
                 product.setIsBestSeller((Boolean) productData.get("isBestSeller"));
+            }
+            
+            if (productData.containsKey("isFeatured")) {
+                product.setIsFeatured((Boolean) productData.get("isFeatured"));
             }
             
             if (productData.containsKey("hasDiscount")) {

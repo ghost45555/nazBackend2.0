@@ -75,6 +75,16 @@
         </div>
     </section>
 
+    <!-- Featured Products Section -->
+    <section id="featured-products" class="product-section bg-light">
+        <div class="container">
+            <h2 class="text-center mb-5">Featured Products</h2>
+            <div class="row" id="featured-products-container">
+                <!-- Featured products will be loaded here dynamically -->
+            </div>
+        </div>
+    </section>
+
     <!-- Products Section -->
     <section id="products" class="product-section">
         <div class="container">
@@ -87,48 +97,146 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Function to load products
-        async function loadProducts() {
+        const API_URL = 'http://localhost:8080/api';
+        const BACKEND_URL = 'http://localhost:8080';
+        
+        // Function to load featured products
+        async function loadFeaturedProducts() {
             try {
-                const response = await fetch('http://localhost:8080/api/products');
-                const products = await response.json();
-                const container = document.getElementById('products-container');
+                const response = await fetch(`${API_URL}/products/featured`);
+                const featuredProducts = await response.json();
+                const container = document.getElementById('featured-products-container');
                 
-                products.forEach(product => {
-                    const productCard = `
-                        <div class="col-md-4">
-                            <div class="card product-card">
-                                ${product.imageUrl ? 
-                                    `<img src="${product.imageUrl}" class="card-img-top" alt="${product.name}">` :
-                                    `<div class="card-img-top bg-light" style="height: 200px; display: flex; align-items: center; justify-content: center;">
-                                        <span class="text-muted">No image available</span>
-                                    </div>`
-                                }
-                                <div class="card-body">
-                                    <h5 class="card-title">${product.name}</h5>
-                                    <p class="card-text">${product.description || 'No description available'}</p>
-                                    <p class="card-text">
-                                        <strong>Price:</strong> $${product.pricePerKg}/kg
-                                        ${product.hasDiscount ? 
-                                            `<br><span class="text-danger">${product.discountPercentage}% OFF!</span>` : 
-                                            ''}
-                                    </p>
+                if (featuredProducts.length === 0) {
+                    container.innerHTML = '<div class="col-12 text-center"><p>No featured products available at the moment.</p></div>';
+                    return;
+                }
+                
+                container.innerHTML = '';
+                
+                featuredProducts.forEach(product => {
+                    const discountedPrice = product.hasDiscount ? 
+                        (product.pricePerKg * (1 - product.discountPercentage / 100)).toFixed(2) : 
+                        null;
+                        
+                    const productCard = document.createElement('div');
+                    productCard.className = 'col-md-4 mb-4';
+                    productCard.innerHTML = `
+                        <div class="card product-card">
+                            <img src="${BACKEND_URL}/api/products/${product.id}/image" 
+                                 class="card-img-top" style="height: 200px; object-fit: contain;"
+                                 alt="${product.name}"
+                                 onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                            <div class="card-body">
+                                <h5 class="card-title">${product.name}</h5>
+                                
+                                <div class="badge-container">
+                                    ${product.isNewArrival ? '<span class="badge bg-success">New Arrival</span> ' : ''}
+                                    ${product.isBestSeller ? '<span class="badge bg-warning">Best Seller</span> ' : ''}
+                                    ${product.isFeatured ? '<span class="badge bg-info">Featured</span>' : ''}
                                 </div>
+                                
+                                <p class="card-text">${product.description || 'No description available'}</p>
+                                
+                                <div class="price-container">
+                                    ${product.hasDiscount ? 
+                                        `<span class="discount-price">$${product.pricePerKg}/kg</span>
+                                         <span class="text-danger">$${discountedPrice}/kg</span>
+                                         <span class="badge bg-danger">${product.discountPercentage}% OFF</span>` :
+                                        `<span>$${product.pricePerKg}/kg</span>`
+                                    }
+                                </div>
+                                
+                                <a href="all_products.html" class="btn btn-outline-primary mt-2">View Details</a>
                             </div>
                         </div>
                     `;
-                    container.innerHTML += productCard;
+                    container.appendChild(productCard);
                 });
             } catch (error) {
+                console.error('Error loading featured products:', error);
+                const container = document.getElementById('featured-products-container');
+                container.innerHTML = '<div class="col-12 text-center"><p>Failed to load featured products.</p></div>';
+            }
+        }
+
+        // Function to load products
+        async function loadProducts() {
+            try {
+                const response = await fetch(`${API_URL}/products`);
+                const products = await response.json();
+                const container = document.getElementById('products-container');
+                
+                // Show only a subset of products (e.g., the latest 6)
+                const displayProducts = products.slice(0, 6);
+                
+                container.innerHTML = '';
+                
+                displayProducts.forEach(product => {
+                    const discountedPrice = product.hasDiscount ? 
+                        (product.pricePerKg * (1 - product.discountPercentage / 100)).toFixed(2) : 
+                        null;
+                    
+                    const productCard = document.createElement('div');
+                    productCard.className = 'col-md-4 mb-4';
+                    productCard.innerHTML = `
+                        <div class="card product-card">
+                            <img src="${BACKEND_URL}/api/products/${product.id}/image" 
+                                 class="card-img-top" style="height: 200px; object-fit: contain;"
+                                 alt="${product.name}"
+                                 onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                            <div class="card-body">
+                                <h5 class="card-title">${product.name}</h5>
+                                
+                                <div class="badge-container">
+                                    ${product.isNewArrival ? '<span class="badge bg-success">New Arrival</span> ' : ''}
+                                    ${product.isBestSeller ? '<span class="badge bg-warning">Best Seller</span> ' : ''}
+                                    ${product.isFeatured ? '<span class="badge bg-info">Featured</span>' : ''}
+                                </div>
+                                
+                                <p class="card-text">${product.description || 'No description available'}</p>
+                                
+                                <div class="price-container">
+                                    ${product.hasDiscount ? 
+                                        `<span class="discount-price">$${product.pricePerKg}/kg</span>
+                                         <span class="text-danger">$${discountedPrice}/kg</span>
+                                         <span class="badge bg-danger">${product.discountPercentage}% OFF</span>` :
+                                        `<span>$${product.pricePerKg}/kg</span>`
+                                    }
+                                </div>
+                                
+                                <a href="all_products.html" class="btn btn-outline-primary mt-2">View Details</a>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(productCard);
+                });
+                
+                // Add "View All" button if there are more products
+                if (products.length > displayProducts.length) {
+                    const viewAllContainer = document.createElement('div');
+                    viewAllContainer.className = 'col-12 text-center mt-4';
+                    viewAllContainer.innerHTML = `
+                        <a href="all_products.html" class="btn btn-primary">View All Products</a>
+                    `;
+                    container.appendChild(viewAllContainer);
+                }
+            } catch (error) {
                 console.error('Error loading products:', error);
+                const container = document.getElementById('products-container');
+                container.innerHTML = '<div class="col-12 text-center"><p>Failed to load products.</p></div>';
             }
         }
 
         // Load products when the page loads
-        document.addEventListener('DOMContentLoaded', loadProducts);
-
-        // Check authentication status on page load
         document.addEventListener('DOMContentLoaded', function() {
+            loadFeaturedProducts();
+            loadProducts();
+            checkAuthStatus();
+        });
+
+        // Check authentication status
+        function checkAuthStatus() {
             const token = localStorage.getItem('token');
             const authLinks = document.getElementById('authLinks');
             const userInfo = document.getElementById('userInfo');
@@ -161,7 +269,7 @@
                 userInfo.style.display = 'none';
                 logoutLink.style.display = 'none';
             }
-        });
+        }
 
         function logout() {
             localStorage.removeItem('token');

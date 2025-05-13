@@ -49,6 +49,9 @@ public class Product {
     @Column(name = "is_best_seller")
     private Boolean isBestSeller = false;
 
+    @Column(name = "is_featured")
+    private Boolean isFeatured = false;
+
     @Column(name = "price_per_kg", nullable = false, precision = 10, scale = 2)
     private BigDecimal pricePerKg;
 

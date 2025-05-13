@@ -173,6 +173,10 @@ public class ProductService {
         return productRepository.findByIsBestSellerTrue();
     }
 
+    public List<Product> getFeaturedProducts() {
+        return productRepository.findByIsFeaturedTrue();
+    }
+
     // New methods for managing product features
     public List<ProductFeature> getProductFeatures(Long productId) {
         return featureRepository.findByProductId(productId);
@@ -480,6 +484,7 @@ public class ProductService {
         }
         dto.setIsNewArrival(product.getIsNewArrival());
         dto.setIsBestSeller(product.getIsBestSeller());
+        dto.setIsFeatured(product.getIsFeatured());
         dto.setPricePerKg(product.getPricePerKg());
         dto.setHasDiscount(product.getHasDiscount());
         dto.setDiscountPercentage(product.getDiscountPercentage());
@@ -554,6 +559,7 @@ public class ProductService {
         product.setImageUrl(productDTO.getImageUrl()); // Handle image data update separately if needed
         product.setIsNewArrival(productDTO.getIsNewArrival());
         product.setIsBestSeller(productDTO.getIsBestSeller());
+        product.setIsFeatured(productDTO.getIsFeatured());
         product.setPricePerKg(productDTO.getPricePerKg());
         product.setHasDiscount(productDTO.getHasDiscount());
         product.setDiscountPercentage(productDTO.getDiscountPercentage());
