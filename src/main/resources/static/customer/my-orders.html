@@ -366,7 +366,7 @@
             ordersList.forEach(order => {
                 const orderDate = new Date(order.createdAt).toLocaleDateString();
                 const statusClass = getStatusClass(order.statusName);
-                const items = order.items || order.orderItems || []; // Safely handle undefined items
+                const items = order.orderItems || order.items || []; // Safely handle undefined items
                 
                 console.log('Rendering order:', order.id, 'Status:', order.statusName); // Debug log
                 
@@ -560,7 +560,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${renderOrderItemsTable(order.items)}
+                                ${renderOrderItemsTable(order.orderItems)}
                                 <tr>
                                     <td colspan="3" class="text-end">Subtotal</td>
                                     <td class="text-end">$${order.subtotal.toFixed(2)}</td>

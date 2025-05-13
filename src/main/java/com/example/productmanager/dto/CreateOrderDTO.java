@@ -5,8 +5,12 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 @Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateOrderDTO {
@@ -30,4 +34,8 @@ public class CreateOrderDTO {
     
     // Items in the order
     private List<OrderItemDTO> items;
+
+    public Long getUserId() { return userId; }
+
+    public void setUserId(Long userId) { this.userId = userId; }
 } 

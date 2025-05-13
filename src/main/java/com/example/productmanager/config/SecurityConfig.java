@@ -21,6 +21,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.http.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.example.productmanager.repository.UserRepository;
+import com.example.productmanager.entity.User;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Arrays;
 
@@ -32,6 +36,8 @@ public class SecurityConfig {
 
     private final JwtTokenProvider tokenProvider;
     private final UserDetailsService userDetailsService;
+    @Autowired
+    private UserRepository userRepository;
 
     public SecurityConfig(JwtTokenProvider tokenProvider, UserDetailsService userDetailsService) {
         this.tokenProvider = tokenProvider;
@@ -50,16 +56,20 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/login.html", "/signup.html", "/all_products.html", "/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PATCH, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/products/**").hasAnyRole("ADMIN", "PM")
+                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAnyRole("ADMIN", "PM")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyRole("ADMIN", "PM")
+                .requestMatchers(HttpMethod.PATCH, "/api/products/**").hasAnyRole("ADMIN", "PM")
                 .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/orders/{id}").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/orders/**").authenticated()
-                .requestMatchers("/product_management.html").hasRole("ADMIN")
-                .requestMatchers("/api/categories/**").hasRole("ADMIN")
-                .requestMatchers("/api/certifications/**").hasRole("ADMIN")
+                .requestMatchers("/product_management.html").hasAnyRole("ADMIN", "PM")
+                .requestMatchers("/api/categories/**").hasAnyRole("ADMIN", "PM")
+                .requestMatchers("/api/certifications/**").hasAnyRole("ADMIN", "PM")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/order_management.html").hasAnyRole("ADMIN", "OM")
+                .requestMatchers("/api/orders/**").hasAnyRole("ADMIN", "OM")
+                .requestMatchers("/api/order-statuses/**").hasAnyRole("ADMIN", "OM")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(new JwtAuthenticationFilter(tokenProvider, userDetailsService),
@@ -106,5 +116,14 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @PostConstruct
+    public void printAllUsersAndRoles() {
+        System.out.println("--- USERS AND ROLES AT STARTUP ---");
+        for (User user : userRepository.findAll()) {
+            System.out.println("User: " + user.getUsername() + ", Roles: " + user.getRoles());
+        }
+        System.out.println("----------------------------------");
     }
 } 

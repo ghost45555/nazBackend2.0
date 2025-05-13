@@ -748,4 +748,63 @@ public class ProductController {
                 .body("Error updating product info: " + e.getMessage());
         }
     }
+
+    /**
+     * PUT /api/products/{productId}/inventory : Updates only the inventory for a product.
+     * @param productId the ID of the product
+     * @param body JSON with { "inventory": newInventory }
+     * @return the updated product or error
+     */
+    @PutMapping("/{productId}/inventory")
+    public ResponseEntity<?> updateProductInventory(@PathVariable Long productId, @RequestBody Map<String, Object> body) {
+        try {
+            if (!body.containsKey("inventory")) {
+                return ResponseEntity.badRequest().body("Missing 'inventory' field");
+            }
+            Integer newInventory;
+            Object invObj = body.get("inventory");
+            if (invObj instanceof Integer) {
+                newInventory = (Integer) invObj;
+            } else if (invObj instanceof String) {
+                newInventory = Integer.parseInt((String) invObj);
+            } else if (invObj instanceof Number) {
+                newInventory = ((Number) invObj).intValue();
+            } else {
+                return ResponseEntity.badRequest().body("Invalid inventory format");
+            }
+            if (newInventory < 0) newInventory = 0;
+            Product product = productService.getProduct(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+            product.setInventory(newInventory);
+            Product updated = productService.saveProduct(product, null);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error updating inventory: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Decrement inventory for a product by productId and quantity.
+     * POST /api/products/{productId}/decrement-inventory
+     * Body: { "quantity": 5 }
+     */
+    @PostMapping("/{productId}/decrement-inventory")
+    public ResponseEntity<?> decrementInventory(@PathVariable Long productId, @RequestBody Map<String, Object> body) {
+        try {
+            if (!body.containsKey("quantity")) {
+                return ResponseEntity.badRequest().body("Missing 'quantity' in request body");
+            }
+            int quantity = Integer.parseInt(body.get("quantity").toString());
+            productService.decrementInventory(productId, quantity);
+            return ResponseEntity.ok(Map.of(
+                "message", "Inventory decremented successfully",
+                "productId", productId,
+                "quantity", quantity
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "error", e.getMessage()
+            ));
+        }
+    }
 } 

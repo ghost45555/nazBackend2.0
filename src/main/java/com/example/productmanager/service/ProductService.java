@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import com.example.productmanager.entity.OrderItem;
 
 @Service
 public class ProductService {
@@ -59,6 +60,9 @@ public class ProductService {
 
     @Autowired
     private ProductWeightOptionRepository weightOptionRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
 
     @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
@@ -553,10 +557,30 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
 
+        // Validate inventory if it's being updated
+        if (productDTO.getInventory() != null && !productDTO.getInventory().equals(product.getInventory())) {
+            // Get all pending and processing orders for this product
+            List<OrderItem> orderItems = orderItemRepository.findByProduct(product);
+            int reservedInventory = 0;
+            
+            for (OrderItem item : orderItems) {
+                String status = item.getOrder().getStatus().getName();
+                if (status.equals("Pending") || status.equals("Processing")) {
+                    reservedInventory += item.getQuantity();
+                }
+            }
+            
+            // Ensure new inventory is not less than reserved inventory
+            if (productDTO.getInventory() < reservedInventory) {
+                throw new RuntimeException("Cannot set inventory below " + reservedInventory + 
+                    " as there are pending/processing orders requiring this amount");
+            }
+        }
+
         // --- Update Product Core Fields --- 
         product.setName(productDTO.getName());
         product.setDescription(productDTO.getDescription());
-        product.setImageUrl(productDTO.getImageUrl()); // Handle image data update separately if needed
+        product.setImageUrl(productDTO.getImageUrl());
         product.setIsNewArrival(productDTO.getIsNewArrival());
         product.setIsBestSeller(productDTO.getIsBestSeller());
         product.setIsFeatured(productDTO.getIsFeatured());
@@ -672,5 +696,22 @@ public class ProductService {
         // Re-fetching or ensuring eager loading/join fetch during the update might be better
         // For simplicity, we'll call the existing converter.
         return convertToProductDTO(updatedProduct); 
+    }
+
+    /**
+     * Decrement inventory for a product by productId and quantity.
+     * Throws exception if not enough inventory.
+     */
+    @Transactional
+    public void decrementInventory(Long productId, int quantity) {
+        Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+        int currentInventory = product.getInventory() != null ? product.getInventory() : 0;
+        if (quantity > currentInventory) {
+            throw new RuntimeException("Insufficient inventory for product: " + product.getName() + ". Requested: " + quantity + ", Available: " + currentInventory);
+        }
+        product.setInventory(currentInventory - quantity);
+        logger.info("Decremented inventory for product {}: {} -> {}", product.getName(), currentInventory, currentInventory - quantity);
+        productRepository.save(product);
     }
 } 

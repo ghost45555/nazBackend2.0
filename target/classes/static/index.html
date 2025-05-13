@@ -41,20 +41,20 @@
                     <li class="nav-item">
                         <a class="nav-link" href="all_products.html">All Products</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="productManagementLink">
                         <a class="nav-link" href="product_management.html">Product Management</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="orderManagementLink">
                         <a class="nav-link" href="order_management.html">Order Management</a>
                     </li>
                     <li class="nav-item" id="authLinks">
                         <a class="nav-link" href="login.html">Login</a>
                     </li>
-                    <li class="nav-item" id="userInfo" style="display: none;">
-                        <span class="nav-link" id="username"></span>
-                    </li>
                     <li class="nav-item" id="logoutLink" style="display: none;">
                         <a class="nav-link" href="#" onclick="logout()">Logout</a>
+                    </li>
+                    <li class="nav-item" id="addWorkerLink" style="display: none;">
+                        <a class="nav-link" href="NewWorker.html">Add Worker</a>
                     </li>
                 </ul>
             </div>
@@ -242,13 +242,14 @@
         function checkAuthStatus() {
             const token = localStorage.getItem('token');
             const authLinks = document.getElementById('authLinks');
-            const userInfo = document.getElementById('userInfo');
             const logoutLink = document.getElementById('logoutLink');
+            const orderManagementLink = document.getElementById('orderManagementLink');
+            const addWorkerLink = document.getElementById('addWorkerLink');
+            const productManagementLink = document.getElementById('productManagementLink');
             
             if (token) {
                 // User is logged in
                 authLinks.style.display = 'none';
-                userInfo.style.display = 'block';
                 logoutLink.style.display = 'block';
                 
                 // Fetch user info
@@ -260,7 +261,31 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('username').textContent = data.username;
+                    // Check user role and adjust navigation
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    console.log('User roles:', payload.roles); // Debug log
+                    
+                    if (payload.roles && payload.roles.includes('ROLE_ADMIN')) {
+                        // Admin has access to everything
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'block';
+                        productManagementLink.style.display = 'block';
+                    } else if (payload.roles && payload.roles.includes('ROLE_OM')) {
+                        // Order Manager has access to order management
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                    } else if (payload.roles && (payload.roles.includes('ROLE_PM') || payload.roles.includes('ROLE_PRODUCT_MANAGER'))) {
+                        // Product Manager has access to product management and basic pages
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'block';
+                    } else {
+                        // Regular users have limited access
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                    }
                 })
                 .catch(error => {
                     console.error('Error fetching user info:', error);
@@ -269,8 +294,10 @@
             } else {
                 // User is not logged in
                 authLinks.style.display = 'block';
-                userInfo.style.display = 'none';
                 logoutLink.style.display = 'none';
+                orderManagementLink.style.display = 'none';
+                addWorkerLink.style.display = 'none';
+                productManagementLink.style.display = 'none';
             }
         }
 

@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
 @RequestMapping("/api/certifications")
@@ -27,6 +29,9 @@ public class CertificationController {
      */
     @GetMapping
     public List<Certification> getAllCertifications() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("Current user: " + auth.getName());
+        System.out.println("Authorities: " + auth.getAuthorities());
         return certificationRepository.findAll();
     }
     

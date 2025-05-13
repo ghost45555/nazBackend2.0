@@ -1,6 +1,5 @@
 com\example\productmanager\controller\CustomerAddressController.class
 com\example\productmanager\config\JacksonConfig.class
-com\example\productmanager\controller\OrderController.class
 com\example\productmanager\model\ProductWeightOption.class
 com\example\productmanager\dto\OrderItemDTO.class
 com\example\productmanager\entity\User.class
@@ -17,6 +16,7 @@ com\example\productmanager\repository\ProductRepository.class
 com\example\productmanager\dto\CustomerAddressDTO.class
 com\example\productmanager\dto\WeightOptionDTO.class
 com\example\productmanager\entity\CustomerAddress.class
+com\example\productmanager\controller\AdminController.class
 com\example\productmanager\service\CategoryService.class
 com\example\productmanager\dto\NutritionalInfoDTO.class
 com\example\productmanager\dto\JwtResponse.class
@@ -24,7 +24,6 @@ com\example\productmanager\repository\OrderItemRepository.class
 com\example\productmanager\dto\CustomerLoginRequest.class
 com\example\productmanager\service\CustomUserDetailsService.class
 com\example\productmanager\repository\OrderRepository.class
-com\example\productmanager\service\OrderService.class
 com\example\productmanager\model\Certification.class
 com\example\productmanager\security\JwtAuthenticationFilter.class
 com\example\productmanager\dto\CreateOrderDTO.class
@@ -35,6 +34,7 @@ com\example\productmanager\entity\Order.class
 com\example\productmanager\controller\CertificationController.class
 com\example\productmanager\util\PasswordGenerator.class
 com\example\productmanager\dto\SignupRequest.class
+com\example\productmanager\repository\WorkerRepository.class
 com\example\productmanager\dto\LoginRequest.class
 com\example\productmanager\repository\CertificationRepository.class
 com\example\productmanager\controller\CategoryController.class
@@ -45,6 +45,7 @@ com\example\productmanager\service\ProductService.class
 com\example\productmanager\dto\OrderDTO.class
 com\example\productmanager\config\SecurityConfig.class
 com\example\productmanager\repository\ProductSpecificationRepository.class
+com\example\productmanager\entity\Worker.class
 com\example\productmanager\service\OrderStatusService.class
 com\example\productmanager\repository\ProductFeatureRepository.class
 com\example\productmanager\model\Category.class

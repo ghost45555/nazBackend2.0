@@ -39,6 +39,8 @@ import org.springframework.validation.FieldError;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -74,17 +76,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = tokenProvider.generateToken(authentication);
-        
-        User user = userRepository.findByUsername(loginRequest.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return ResponseEntity.ok(new JwtResponse(jwt, "Bearer", user.getUsername(), user.getEmail()));
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = tokenProvider.generateToken(authentication);
+            User user = userRepository.findByUsername(loginRequest.getUsername()).orElse(null);
+            if (user != null) {
+                return ResponseEntity.ok(new JwtResponse(jwt, "Bearer", user.getUsername(), user.getEmail()));
+            }
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", "User not found"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", "Invalid username or password"));
+        }
     }
     
     @PostMapping("/customer-login")
@@ -125,102 +130,26 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signupRequest) {
-        try {
-            logger.info("Processing signup request for username: {} with role: {}", 
-                signupRequest.getUsername(), signupRequest.getRole());
-            
-            // Admin role check
-            if ("Admin".equalsIgnoreCase(signupRequest.getRole()) && !"admin".equals(signupRequest.getUsername())) {
-                logger.warn("Attempt to register non-'admin' user with Admin role denied.");
-                return ResponseEntity.badRequest().body(Map.of("message", "Admin role can only be assigned to username 'admin'"));
-            }
-
-            if (userRepository.existsByUsername(signupRequest.getUsername())) {
-                logger.warn("Username {} is already taken", signupRequest.getUsername());
-                // Use Map for consistent error structure
-                return ResponseEntity.badRequest().body(Map.of("message", "Username is already taken!"));
-            }
-
-            if (userRepository.existsByEmail(signupRequest.getEmail())) {
-                logger.warn("Email {} is already in use", signupRequest.getEmail());
-                // Use Map for consistent error structure
-                return ResponseEntity.badRequest().body(Map.of("message", "Email is already in use!"));
-            }
-
-            User user = new User();
-            user.setUsername(signupRequest.getUsername());
-            user.setEmail(signupRequest.getEmail());
-            user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
-            user.setFirstName(signupRequest.getFirstName());
-            user.setLastName(signupRequest.getLastName());
-            user.setPhone(signupRequest.getPhone());
-
-            // Determine role name based on input
-            String roleName;
-            switch (signupRequest.getRole().toUpperCase()) {
-                case "ADMIN":
-                    roleName = "ROLE_ADMIN";
-                    break;
-                case "PRODUCT MANAGER":
-                    roleName = "ROLE_PRODUCT_MANAGER";
-                    break;
-                case "ORDER MANAGER":
-                    roleName = "ROLE_ORDER_MANAGER";
-                    break;
-                case "CUSTOMER":
-                default:
-                    // Map Customer to ROLE_USER if ROLE_CUSTOMER doesn't exist or isn't standard
-                    roleName = "ROLE_USER"; 
-                    break;
-            }
-
-            // Find and assign the selected role
-            final String finalRoleName = roleName; // Need final variable for lambda
-            Role userRole = roleRepository.findByName(finalRoleName)
-                    .orElseGet(() -> {
-                        logger.warn("Role {} not found, creating it", finalRoleName);
-                        Role newRole = new Role();
-                        newRole.setName(finalRoleName);
-                        // Add description based on role
-                        String description = switch (finalRoleName) {
-                            case "ROLE_ADMIN" -> "Administrator role with full access";
-                            case "ROLE_PRODUCT_MANAGER" -> "Manages product listings";
-                            case "ROLE_ORDER_MANAGER" -> "Manages customer orders";
-                            case "ROLE_USER" -> "Regular customer role";
-                            default -> "Default user role";
-                        };
-                        newRole.setDescription(description);
-                        return roleRepository.save(newRole);
-                    });
-
-            Set<Role> roles = new HashSet<>();
-            roles.add(userRole);
-            user.setRoles(roles);
-            
-            logger.info("Saving new user: {} with role {}", user.getUsername(), finalRoleName);
-            userRepository.save(user);
-
-            // Authenticate the user after registration
-            try {
-                Authentication authentication = authenticationManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(signupRequest.getUsername(), signupRequest.getPassword()));
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                String jwt = tokenProvider.generateToken(authentication);
-
-                logger.info("User {} successfully registered and authenticated", user.getUsername());
-                return ResponseEntity.ok(new JwtResponse(jwt, "Bearer", user.getUsername(), user.getEmail()));
-            } catch (Exception e) {
-                logger.error("Error authenticating user after registration: {}", e.getMessage());
-                throw e;
-            }
-        } catch (Exception e) {
-            logger.error("Error during user registration: {}", e.getMessage(), e);
-            // Return structured error
-            return ResponseEntity.badRequest()
-                .body(Map.of("message", "Error during registration: " + e.getMessage()));
+    public ResponseEntity<?> signup(@RequestBody SignupRequest signupRequest) {
+        if (userRepository.existsByUsername(signupRequest.getUsername())) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", "Username already exists"));
         }
+        if (userRepository.existsByEmail(signupRequest.getEmail())) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", "Email already exists"));
+        }
+        User user = new User();
+        user.setFirstName(signupRequest.getFirstName());
+        user.setLastName(signupRequest.getLastName());
+        user.setEmail(signupRequest.getEmail());
+        user.setUsername(signupRequest.getUsername());
+        user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
+        Role role = roleRepository.findByName(signupRequest.getRole()).orElse(null);
+        if (role == null) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", "Role not found: " + signupRequest.getRole()));
+        }
+        user.setRoles(Collections.singleton(role));
+        userRepository.save(user);
+        return ResponseEntity.ok(Collections.singletonMap("message", "User registered successfully"));
     }
     
     @PostMapping("/customer-signup")
@@ -415,5 +344,47 @@ public class AuthController {
     public Map<String, String> handleRuntimeExceptions(RuntimeException ex) {
         logger.error("Runtime exception: {}", ex.getMessage(), ex);
         return Map.of("message", ex.getMessage());
+    }
+
+    @GetMapping("/current-user")
+    public ResponseEntity<?> getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+            User user = userRepository.findByUsername(auth.getName()).orElse(null);
+            if (user != null) {
+                Map<String, Object> userDetails = new HashMap<>();
+                userDetails.put("username", user.getUsername());
+                userDetails.put("roles", user.getRoles().stream().map(Role::getName).collect(Collectors.toList()));
+                return ResponseEntity.ok(userDetails);
+            }
+        }
+        return ResponseEntity.status(401).body(Collections.singletonMap("message", "Not authenticated"));
+    }
+
+    @PostMapping("/customer/signup")
+    public ResponseEntity<?> customerSignup(@RequestBody CustomerSignupRequest signupRequest) {
+        if (userRepository.existsByEmail(signupRequest.getEmail())) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", "Email already exists"));
+        }
+        User user = new User();
+        user.setFirstName(signupRequest.getFirstName());
+        user.setLastName(signupRequest.getLastName());
+        user.setEmail(signupRequest.getEmail());
+        user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
+        user.setPhone(signupRequest.getPhone());
+        Role role = roleRepository.findByName("ROLE_USER").orElse(null);
+        if (role == null) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", "Role not found: ROLE_USER"));
+        }
+        user.setRoles(Collections.singleton(role));
+        userRepository.save(user);
+        if (signupRequest.getOrderId() != null) {
+            Order order = orderRepository.findById(signupRequest.getOrderId()).orElse(null);
+            if (order != null) {
+                order.setUser(user);
+                orderRepository.save(order);
+            }
+        }
+        return ResponseEntity.ok(Collections.singletonMap("message", "Customer registered successfully"));
     }
 } 

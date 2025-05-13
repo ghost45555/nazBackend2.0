@@ -33,8 +33,9 @@ public class OrderController {
     private UserRepository userRepository;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORDER_MANAGER')")
-    public ResponseEntity<List<OrderDTO>> getAllOrders() {
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OM')")
+    public ResponseEntity<List<OrderDTO>> getAllOrders(Authentication authentication) {
+        System.out.println("Authorities: " + authentication.getAuthorities());
         List<OrderDTO> orders = orderService.getAllOrders();
         return ResponseEntity.ok(orders);
     }
@@ -50,7 +51,7 @@ public class OrderController {
             // Check if user has admin/manager role or is the order owner
             boolean isAdminOrManager = authentication.getAuthorities().stream()
                     .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN") || 
-                                         authority.getAuthority().equals("ROLE_ORDER_MANAGER"));
+                                         authority.getAuthority().equals("ROLE_OM"));
             
             if (isAdminOrManager) {
                 OrderDTO order = orderService.getOrderById(id);
@@ -93,7 +94,7 @@ public class OrderController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORDER_MANAGER') or (isAuthenticated() and #userId == @userRepository.findByUsername(authentication.name).get().id)")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OM') or (isAuthenticated() and #userId == @userRepository.findByUsername(authentication.name).get().id)")
     public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@PathVariable Long userId) {
         try {
             List<OrderDTO> orders = orderService.getOrdersByUserId(userId);
@@ -104,14 +105,14 @@ public class OrderController {
     }
 
     @GetMapping("/email/{email}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORDER_MANAGER') or (isAuthenticated() and #email == authentication.name)")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OM') or (isAuthenticated() and #email == authentication.name)")
     public ResponseEntity<List<OrderDTO>> getOrdersByEmail(@PathVariable String email) {
         List<OrderDTO> orders = orderService.getOrdersByEmail(email);
         return ResponseEntity.ok(orders);
     }
 
     @GetMapping("/status/{statusName}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORDER_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OM')")
     public ResponseEntity<List<OrderDTO>> getOrdersByStatus(@PathVariable String statusName) {
         try {
             List<OrderDTO> orders = orderService.getOrdersByStatus(statusName);
@@ -159,7 +160,7 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/status/{statusName}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORDER_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('OM')")
     public ResponseEntity<?> updateOrderStatus(
             @PathVariable Long id,
             @PathVariable String statusName) {

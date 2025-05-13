@@ -2,10 +2,14 @@ package com.example.productmanager.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 import com.example.productmanager.model.Product;
 
 @Data
+@Getter
+@Setter
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
