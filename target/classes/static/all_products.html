@@ -170,10 +170,10 @@
 
                                     <div class="price-container">
                                         ${product.hasDiscount ? 
-                                            `<span class="discount-price">$${product.pricePerKg}/kg</span>
-                                             <span class="text-danger">$${discountedPrice}/kg</span>
+                                            `<span class="discount-price">Rs.${product.pricePerKg}/kg</span>
+                                             <span class="text-danger">Rs.${discountedPrice}/kg</span>
                                              <span class="badge bg-danger">${product.discountPercentage}% OFF</span>` :
-                                            `<span>$${product.pricePerKg}/kg</span>`
+                                            `<span>Rs.${product.pricePerKg}/kg</span>`
                                         }
                                     </div>
 
@@ -216,8 +216,8 @@
                                                             ''}
                                                         <div class="card-body p-2">
                                                             <p class="card-text mb-0">
-                                                                <strong>${option.weightValue}g</strong><br>
-                                                                $${option.price}
+                                                                <strong>${option.weightValue}kg</strong><br>
+                                                                Rs.${option.price}
                                                             </p>
                                                         </div>
                                                     </div>

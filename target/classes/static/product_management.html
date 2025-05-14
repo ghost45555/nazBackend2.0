@@ -208,17 +208,20 @@
                                     <label class="form-label">Weight Options</label>
                                     <div class="row mb-2">
                                         <div class="col-md-3">
-                                            <input type="number" class="form-control" id="weightValueInput" placeholder="Weight in grams">
+                                            <input type="number" class="form-control" id="weightValueInput" placeholder="Weight in kilograms">
                                         </div>
                                         <div class="col-md-3">
                                             <input type="number" class="form-control" id="weightPriceInput" step="0.01" placeholder="Price">
                                         </div>
                                         <div class="col-md-4">
-                                            <input type="file" class="form-control" id="packagingPhotoInput" accept="image/*">
+                                            <input type="file" class="form-control" id="packagingPhotoInput" accept="image/*" onchange="previewMainFormPackagingPhoto(this)">
                                         </div>
                                         <div class="col-md-2">
                                             <button class="btn btn-outline-secondary w-100" type="button" onclick="addWeightOption()">Add</button>
                                         </div>
+                                    </div>
+                                    <div id="mainPackagingPhotoPreview" class="text-center mt-2 mb-2" style="display: none;">
+                                        <img id="mainPhotoPreviewImage" src="#" alt="Packaging Preview" style="max-height: 150px; max-width: 200px; object-fit: contain;" class="img-thumbnail">
                                     </div>
                                     <div id="weightOptionsList" class="weight-options-list"></div>
                                 </div>
@@ -558,10 +561,172 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const products = await response.json();
+                console.log("Products loaded:", products.length);
+                
+                // Load nutritional info for each product
+                for (const product of products) {
+                    try {
+                        console.log(`Fetching nutritional info for product ${product.id}`);
+                        const nutritionalResponse = await fetchWithAuth(`${API_URL}/products/${product.id}/nutritional-info`);
+                        if (nutritionalResponse.ok) {
+                            product.nutritionalInfo = await nutritionalResponse.json();
+                            console.log(`Nutritional info for product ${product.id}:`, product.nutritionalInfo);
+                        } else {
+                            console.log(`No nutritional info found for product ${product.id}. Status: ${nutritionalResponse.status}`);
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching nutritional info for product ${product.id}:`, error);
+                    }
+                }
+                
                 const productsList = document.getElementById('productsList');
                 productsList.innerHTML = '';
                 
                 products.forEach(product => {
+                    // Generate HTML for features
+                    let featuresHtml = '';
+                    if (product.features && product.features.length > 0) {
+                        featuresHtml = `
+                            <div class="mt-2">
+                                <strong>Features:</strong>
+                                <ul class="list-group">
+                                    ${product.features.map(feature => `
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            ${feature.feature}
+                                            <div>
+                                                <button class="btn btn-sm btn-info me-1" onclick="editFeature(${product.id}, ${feature.id}, '${feature.feature.replace(/'/g, "\\'")}')">Edit</button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteFeature(${product.id}, ${feature.id})">Delete</button>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                                <button class="btn btn-sm btn-primary mt-2" onclick="addMoreFeatures(${product.id})">Add Features</button>
+                            </div>
+                        `;
+                    } else {
+                        featuresHtml = `
+                            <div class="mt-2">
+                                <strong>Features:</strong> None
+                                <button class="btn btn-sm btn-primary ms-2" onclick="addMoreFeatures(${product.id})">Add Features</button>
+                            </div>
+                        `;
+                    }
+                    
+                    // Generate HTML for specifications
+                    let specificationsHtml = '';
+                    if (product.specifications && product.specifications.length > 0) {
+                        specificationsHtml = `
+                            <div class="mt-2">
+                                <strong>Specifications:</strong>
+                                <ul class="list-group">
+                                    ${product.specifications.map(spec => `
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span><strong>${spec.specName}:</strong> ${spec.specValue}</span>
+                                            <div>
+                                                <button class="btn btn-sm btn-info me-1" onclick="editSpecification(${product.id}, ${spec.id}, '${spec.specName.replace(/'/g, "\\'")}', '${spec.specValue.replace(/'/g, "\\'")}')">Edit</button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteSpecification(${product.id}, ${spec.id})">Delete</button>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                                <button class="btn btn-sm btn-primary mt-2" onclick="addMoreSpecifications(${product.id})">Add Specifications</button>
+                            </div>
+                        `;
+                    } else {
+                        specificationsHtml = `
+                            <div class="mt-2">
+                                <strong>Specifications:</strong> None
+                                <button class="btn btn-sm btn-primary ms-2" onclick="addMoreSpecifications(${product.id})">Add Specifications</button>
+                            </div>
+                        `;
+                    }
+                    
+                    // Generate HTML for certifications
+                    let certificationsHtml = '';
+                    if (product.certifications && product.certifications.length > 0) {
+                        certificationsHtml = `
+                            <div class="mt-2">
+                                <strong>Certifications:</strong>
+                                <ul class="list-group">
+                                    ${product.certifications.map(cert => `
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            ${cert.name}
+                                            <button class="btn btn-sm btn-danger" onclick="removeProductCertification(${product.id}, ${cert.id})">Remove</button>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                                <button class="btn btn-sm btn-primary mt-2" onclick="addMoreCertifications(${product.id})">Add Certifications</button>
+                            </div>
+                        `;
+                    } else {
+                        certificationsHtml = `
+                            <div class="mt-2">
+                                <strong>Certifications:</strong> None
+                                <button class="btn btn-sm btn-primary ms-2" onclick="addMoreCertifications(${product.id})">Add Certifications</button>
+                            </div>
+                        `;
+                    }
+                    
+                    // Generate HTML for weight options
+                    let weightOptionsHtml = '';
+                    if (product.weightOptions && product.weightOptions.length > 0) {
+                        weightOptionsHtml = `
+                            <div class="mt-2">
+                                <strong>Weight Options:</strong>
+                                <ul class="list-group">
+                                    ${product.weightOptions.map(option => `
+                                        <li class="list-group-item">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span><strong>${option.weightValue}kg:</strong> Rs.${option.price}</span>
+                                                <div>
+                                                    <button class="btn btn-sm btn-info me-1" onclick="editWeightOptionInfo(${product.id}, ${option.id}, ${option.weightValue}, ${option.price})">Edit Info</button>
+                                                    <button class="btn btn-sm btn-secondary me-1" onclick="editWeightOptionPhoto(${product.id}, ${option.id})">Edit Photo</button>
+                                                    <button class="btn btn-sm btn-danger" onclick="deleteWeightOption(${product.id}, ${option.id})">Delete</button>
+                                                </div>
+                                            </div>
+                                            <div class="text-center mt-1">
+                                                <img src="${BACKEND_URL}/api/products/${product.id}/weight-options/${option.id}/image" 
+                                                     alt="Packaging for ${option.weightValue}kg" 
+                                                     class="img-thumbnail" 
+                                                     style="max-height: 100px; max-width: 150px; object-fit: contain;"
+                                                     onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22200%22%20height%3D%22100%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20100%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_1740bc44c85%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3A-apple-system%2CBlinkMacSystemFont%2C%26quot%3BSegoe%20UI%26quot%3B%2CRoboto%2C%26quot%3BHelvetica%20Neue%26quot%3B%2CArial%2C%26quot%3BNoto%20Sans%26quot%3B%2Csans-serif%2C%26quot%3BApple%20Color%20Emoji%26quot%3B%2C%26quot%3BSegoe%20UI%20Emoji%26quot%3B%2C%26quot%3BSegoe%20UI%20Symbol%26quot%3B%2C%26quot%3BNoto%20Color%20Emoji%26quot%3B%2C%20monospace%3Bfont-size%3A10pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_1740bc44c85%22%3E%3Crect%20width%3D%22200%22%20height%3D%22100%22%20fill%3D%22%23eee%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%2256.1953125%22%20y%3D%2255%22%3ENo%20Image%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E'; this.classList.add('no-image')"
+                                                >
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                                <button class="btn btn-sm btn-primary mt-2" onclick="addMoreWeightOptions(${product.id})">Add Weight Options</button>
+                            </div>
+                        `;
+                    } else {
+                        weightOptionsHtml = `
+                            <div class="mt-2">
+                                <strong>Weight Options:</strong> None
+                                <button class="btn btn-sm btn-primary ms-2" onclick="addMoreWeightOptions(${product.id})">Add Weight Options</button>
+                            </div>
+                        `;
+                    }
+                    
+                    // Generate HTML for nutritional info
+                    let nutritionalInfoHtml = '';
+                    if (product.nutritionalInfo) {
+                        nutritionalInfoHtml = `
+                            <div class="mt-2">
+                                <strong>Nutritional Information:</strong> Available
+                                <button class="btn btn-sm btn-info ms-2" onclick="editNutritionalInfo(${product.id})">Edit Nutritional Info</button>
+                            </div>
+                        `;
+                    } else {
+                        // Since we already fetched nutritional info for each product earlier,
+                        // we don't need to fetch it again here
+                        nutritionalInfoHtml = `
+                            <div class="mt-2">
+                                <strong>Nutritional Information:</strong> None
+                                <button class="btn btn-sm btn-primary ms-2" onclick="editNutritionalInfo(${product.id})">Add Nutritional Info</button>
+                            </div>
+                        `;
+                    }
+                    
                     const productCard = document.createElement('div');
                     productCard.className = 'col-md-4 mb-3';
                     productCard.innerHTML = `
@@ -579,7 +744,7 @@
                                 </div>
                                 <p class="card-text">${product.description || ''}</p>
                                 <p class="card-text">
-                                    <strong>Price:</strong> $${product.pricePerKg}/kg<br>
+                                    <strong>Price:</strong> Rs.${product.pricePerKg}/kg<br>
                                     <strong>Inventory:</strong> ${product.inventory}<br>
                                     ${product.hasDiscount ? `<strong>Discount:</strong> ${product.discountPercentage}%<br>` : ''}
                                     ${product.isNewArrival ? '<span class="badge bg-success">New Arrival</span> ' : ''}
@@ -798,6 +963,9 @@
                 document.getElementById('weightValueInput').value = '';
                 document.getElementById('weightPriceInput').value = '';
                 document.getElementById('packagingPhotoInput').value = '';
+                
+                // Clear the preview
+                document.getElementById('mainPackagingPhotoPreview').style.display = 'none';
             }
         }
 
@@ -810,7 +978,7 @@
             const weightOptionsList = document.getElementById('weightOptionsList');
             weightOptionsList.innerHTML = weightOptions.map((option, index) => `
                 <div class="weight-option-item">
-                    <span><strong>${option.weightValue}g:</strong> $${option.price} ${option.packagingPhoto ? '(with packaging photo)' : ''}</span>
+                    <span><strong>${option.weightValue}kg:</strong> Rs.${option.price} ${option.packagingPhoto ? '(with packaging photo)' : ''}</span>
                     <button class="btn btn-sm btn-danger" onclick="removeWeightOption(${index})">Remove</button>
                 </div>
             `).join('');
@@ -1226,7 +1394,7 @@
                         <div class="modal-body">
                             <form id="editWeightOptionForm">
                                 <div class="mb-3">
-                                    <label for="editWeightValue" class="form-label">Weight (grams)</label>
+                                    <label for="editWeightValue" class="form-label">Weight (kilograms)</label>
                                     <input type="number" class="form-control" id="editWeightValue" value="${currentWeight}" required>
                                 </div>
                                 <div class="mb-3">
@@ -1365,7 +1533,7 @@
                         <div class="modal-body">
                             <form id="newWeightOptionForm">
                                 <div class="mb-3">
-                                    <label for="newWeightValue" class="form-label">Weight (grams)</label>
+                                    <label for="newWeightValue" class="form-label">Weight (kilograms)</label>
                                     <input type="number" class="form-control" id="newWeightValue" required>
                                 </div>
                                 <div class="mb-3">
@@ -1374,7 +1542,10 @@
                                 </div>
                                 <div class="mb-3">
                                     <label for="newPackagingPhoto" class="form-label">Packaging Photo</label>
-                                    <input type="file" class="form-control" id="newPackagingPhoto" accept="image/*">
+                                    <input type="file" class="form-control" id="newPackagingPhoto" accept="image/*" onchange="previewPackagingPhoto(this)">
+                                    <div class="mt-2 text-center" id="packagingPhotoPreview" style="display: none;">
+                                        <img id="photoPreviewImage" src="#" alt="Packaging Preview" style="max-height: 150px; max-width: 200px; object-fit: contain;" class="img-thumbnail">
+                                    </div>
                                 </div>
                             </form>
                         </div>
@@ -1481,11 +1652,19 @@
         async function editNutritionalInfo(productId) {
             // Fetch current nutritional info
             try {
+                console.log(`Fetching nutritional info for product ${productId} for editing`);
                 const response = await fetchWithAuth(`${API_URL}/products/${productId}/nutritional-info`);
                 let nutritionalInfo = {};
                 
                 if (response.ok) {
                     nutritionalInfo = await response.json();
+                    console.log(`Received nutritional info for editing:`, nutritionalInfo);
+                } else {
+                    console.log(`No nutritional info found for editing. Status: ${response.status}`);
+                    // If 404, it means nutritional info doesn't exist yet
+                    if (response.status === 404) {
+                        console.log("Nutritional info doesn't exist yet for this product.");
+                    }
                 }
                 
                 // Create a modal for editing nutritional info
@@ -1625,6 +1804,8 @@
                         iron: document.getElementById('editIron').value || null
                     };
                     
+                    console.log(`Saving nutritional info for product ${productId}:`, updatedNutritionalInfo);
+                    
                     try {
                         const response = await fetchWithAuth(`${API_URL}/products/${productId}/nutritional-info`, {
                             method: 'POST',
@@ -1634,10 +1815,22 @@
                             body: JSON.stringify(updatedNutritionalInfo)
                         });
                         
+                        console.log(`Response status from saving nutritional info: ${response.status}`);
+                        
                         if (!response.ok) {
                             const errorData = await response.text();
+                            console.error('Error response from server:', errorData);
                             throw new Error(errorData || 'Failed to update nutritional information');
                         }
+                        
+                        // Try to parse the response as JSON, but fall back to text if it's not JSON
+                        let result;
+                        try {
+                            result = await response.json();
+                        } catch (e) {
+                            result = await response.text();
+                        }
+                        console.log(`Saved nutritional info successfully:`, result);
                         
                         // Show success message
                         alert('Nutritional information updated successfully');
@@ -2730,6 +2923,102 @@
         }
         // Call checkUserRole after login
         checkUserRole();
+
+        // Handle save button click
+        document.getElementById('saveNutritionalInfo').addEventListener('click', async () => {
+            // Collect all nutritional info data
+            const updatedNutritionalInfo = {
+                servingSize: document.getElementById('editServingSize').value || null,
+                servingsPerContainer: document.getElementById('editServingsPerContainer').value || null,
+                calories: document.getElementById('editCalories').value || null,
+                totalFat: document.getElementById('editTotalFat').value || null,
+                saturatedFat: document.getElementById('editSaturatedFat').value || null,
+                transFat: document.getElementById('editTransFat').value || null,
+                cholesterol: document.getElementById('editCholesterol').value || null,
+                sodium: document.getElementById('editSodium').value || null,
+                totalCarbohydrates: document.getElementById('editTotalCarbohydrates').value || null,
+                dietaryFiber: document.getElementById('editDietaryFiber').value || null,
+                sugars: document.getElementById('editSugars').value || null,
+                protein: document.getElementById('editProtein').value || null,
+                vitaminA: document.getElementById('editVitaminA').value || null,
+                vitaminC: document.getElementById('editVitaminC').value || null,
+                calcium: document.getElementById('editCalcium').value || null,
+                iron: document.getElementById('editIron').value || null
+            };
+            
+            console.log(`Saving nutritional info for product ${productId}:`, updatedNutritionalInfo);
+            
+            try {
+                const response = await fetchWithAuth(`${API_URL}/products/${productId}/nutritional-info`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedNutritionalInfo)
+                });
+                
+                console.log(`Response status from saving nutritional info: ${response.status}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    console.error('Error response from server:', errorData);
+                    throw new Error(errorData || 'Failed to update nutritional information');
+                }
+                
+                const result = await response.text();
+                console.log(`Saved nutritional info successfully:`, result);
+                
+                // Show success message
+                alert('Nutritional information updated successfully');
+                
+                // Close the modal
+                bootstrapModal.hide();
+                
+                // Reload the products to show the updated nutritional info
+                await loadProducts();
+            } catch (error) {
+                console.error('Error updating nutritional information:', error);
+                alert('Error updating nutritional information: ' + error.message);
+            }
+        });
+
+        // Preview packaging photo when selected
+        function previewPackagingPhoto(input) {
+            const previewDiv = document.getElementById('packagingPhotoPreview');
+            const previewImg = document.getElementById('photoPreviewImage');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewDiv.style.display = 'block';
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                previewDiv.style.display = 'none';
+            }
+        }
+        
+        // Preview packaging photo in main form when selected
+        function previewMainFormPackagingPhoto(input) {
+            const previewDiv = document.getElementById('mainPackagingPhotoPreview');
+            const previewImg = document.getElementById('mainPhotoPreviewImage');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewDiv.style.display = 'block';
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                previewDiv.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html> 

@@ -125,15 +125,15 @@
                         <h4>Order Summary</h4>
                         <div class="d-flex justify-content-between mb-2">
                             <span>Subtotal:</span>
-                            <span id="subtotal">$0.00</span>
+                            <span id="subtotal">Rs.0.00</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span>Shipping:</span>
-                            <span id="shipping">$5.00</span>
+                            <span id="shipping">Rs.5.00</span>
                         </div>
-                        <div class="d-flex justify-content-between cart-total">
+                        <div class="d-flex justify-content-between fw-bold">
                             <span>Total:</span>
-                            <span id="total">$0.00</span>
+                            <span id="total">Rs.0.00</span>
                         </div>
                         <a href="checkout.html" class="btn btn-primary w-100 mt-3">Proceed to Checkout</a>
                         <button class="btn btn-outline-secondary w-100 mt-2" onclick="clearCart()">Clear Cart</button>
@@ -264,9 +264,9 @@
             const shipping = cart.length > 0 ? SHIPPING_COST : 0;
             const total = subtotal + shipping;
             
-            subtotalElement.textContent = `$${subtotal.toFixed(2)}`;
-            shippingElement.textContent = `$${shipping.toFixed(2)}`;
-            totalElement.textContent = `$${total.toFixed(2)}`;
+            subtotalElement.textContent = `Rs.${subtotal.toFixed(2)}`;
+            shippingElement.textContent = `Rs.${shipping.toFixed(2)}`;
+            totalElement.textContent = `Rs.${total.toFixed(2)}`;
         }
         
         // Update Item Quantity

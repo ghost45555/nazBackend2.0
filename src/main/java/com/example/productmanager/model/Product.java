@@ -71,7 +71,7 @@ public class Product {
     private LocalDateTime updatedAt;
 
     @OneToOne(mappedBy = "product", fetch = FetchType.LAZY)
-    @JsonIgnore
+    @JsonIgnoreProperties({"product"})
     @EqualsAndHashCode.Exclude
     private ProductNutritionalInfo nutritionalInfo;
 

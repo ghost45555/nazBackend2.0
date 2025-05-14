@@ -55,7 +55,16 @@ public class ProductController {
         try {
             logger.info("Fetching all products");
             List<Product> products = productService.getAllProducts();
-            logger.info("Found {} products", products.size());
+            
+            // Log whether nutritional info is included for each product
+            int productsWithNutritionalInfo = 0;
+            for (Product product : products) {
+                if (product.getNutritionalInfo() != null) {
+                    productsWithNutritionalInfo++;
+                }
+            }
+            logger.info("Found {} products, {} with nutritional info", products.size(), productsWithNutritionalInfo);
+            
             return ResponseEntity.ok(products);
         } catch (Exception e) {
             logger.error("Error getting products: {}", e.getMessage(), e);

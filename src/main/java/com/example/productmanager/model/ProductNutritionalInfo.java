@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.util.Objects;
 import lombok.Getter;
 import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Getter
@@ -16,6 +17,7 @@ public class ProductNutritionalInfo {
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "product_id")
+    @JsonIgnoreProperties({"nutritionalInfo"})
     private Product product;
 
     @Column(name = "serving_size")

@@ -217,15 +217,15 @@
                                 <h6>Order Summary</h6>
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>Subtotal:</span>
-                                    <span id="modalSubtotal">$0.00</span>
+                                    <span id="modalSubtotal">Rs.0.00</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>Shipping:</span>
-                                    <span id="modalShipping">$0.00</span>
+                                    <span id="modalShipping">Rs.0.00</span>
                                 </div>
                                 <div class="d-flex justify-content-between fw-bold">
                                     <span>Total:</span>
-                                    <span id="modalTotal">$0.00</span>
+                                    <span id="modalTotal">Rs.0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -255,7 +255,7 @@
                             <thead>
                                 <tr>
                                     <th>Product</th>
-                                    <th>Weight</th>
+                                    <!-- <th>Weight</th> -->
                                     <th>Price</th>
                                     <th>Quantity</th>
                                     <th>Total</th>
@@ -577,7 +577,7 @@
                                 <p class="card-text"><strong>Date:</strong> ${orderDate}</p>
                                 <p class="card-text"><strong>Customer:</strong> ${order.firstName} ${order.lastName}</p>
                                 <p class="card-text"><strong>Email:</strong> ${order.email}</p>
-                                <p class="card-text"><strong>Total:</strong> $${order.total.toFixed(2)}</p>
+                                <p class="card-text"><strong>Total:</strong> Rs.${order.total.toFixed(2)}</p>
                                 <p class="card-text"><strong>Items:</strong> ${itemCount}</p>
                                 <button class="btn btn-primary w-100" onclick="viewOrderDetails(${order.id})">
                                     View Details
@@ -630,9 +630,9 @@
                     statusSpan.classList.add('bg-secondary');
             }
             
-            document.getElementById('modalSubtotal').textContent = `$${order.subtotal.toFixed(2)}`;
-            document.getElementById('modalShipping').textContent = `$${order.shipping.toFixed(2)}`;
-            document.getElementById('modalTotal').textContent = `$${order.total.toFixed(2)}`;
+            document.getElementById('modalSubtotal').textContent = `Rs.${order.subtotal.toFixed(2)}`;
+            document.getElementById('modalShipping').textContent = `Rs.${order.shipping.toFixed(2)}`;
+            document.getElementById('modalTotal').textContent = `Rs.${order.total.toFixed(2)}`;
             
             document.getElementById('modalCustomerName').textContent = `${order.firstName} ${order.lastName}`;
             document.getElementById('modalEmail').textContent = order.email;
@@ -655,7 +655,7 @@
             
             order.orderItems.forEach(item => {
                 const itemTotal = item.price * item.quantity;
-                const weightDisplay = item.weight ? `${item.weight}g` : 'N/A';
+                // const weightDisplay = item.weight ? `${item.weight}g` : 'N/A';
                 const imageUrl = item.productImage || 'https://via.placeholder.com/50';
                 
                 itemsContainer.innerHTML += `
@@ -668,14 +668,16 @@
                                 </div>
                             </div>
                         </td>
-                        <td>${weightDisplay}</td>
-                        <td>$${item.price.toFixed(2)}</td>
+                       
+                        <td>Rs.${item.price.toFixed(2)}</td>
                         <td>${item.quantity}</td>
-                        <td>$${itemTotal.toFixed(2)}</td>
+                        <td>Rs.${itemTotal.toFixed(2)}</td>
                     </tr>
                 `;
             });
             
+            // <td>${weightDisplay}</td>
+
             // Show the modal
             orderDetailsModal.show();
         }
