@@ -49,7 +49,9 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="index.html">Rice Products</a>
+            <a class="navbar-brand" href="index.html">
+                <img src="logo.png" alt="Rice Products" height="40">
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -59,10 +61,19 @@
                         <a class="nav-link" href="index.html#home">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html#products">All Products</a>
+                        <a class="nav-link" href="all_products.html">All Products</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="productManagementLink">
                         <a class="nav-link active" href="product_management.html">Product Management</a>
+                    </li>
+                    <li class="nav-item" id="orderManagementLink">
+                        <a class="nav-link" href="order_management.html">Order Management</a>
+                    </li>
+                    <li class="nav-item" id="authLinks">
+                        <a class="nav-link" href="login.html">Login</a>
+                    </li>
+                    <li class="nav-item" id="logoutLink" style="display: none;">
+                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
                     </li>
                     <li class="nav-item" id="addWorkerLink" style="display: none;">
                         <a class="nav-link" href="NewWorker.html">Add Worker</a>
@@ -423,63 +434,44 @@
             authStatusDiv.textContent = 'Checking authentication status...';
             
             const token = localStorage.getItem('token');
+            const authLinks = document.getElementById('authLinks');
+            const logoutLink = document.getElementById('logoutLink');
+            const orderManagementLink = document.getElementById('orderManagementLink');
+            const addWorkerLink = document.getElementById('addWorkerLink');
+            const productManagementLink = document.getElementById('productManagementLink');
             
-            try {
-                console.log("Making auth check request...");
-                // Display token info
-                if (token) {
-                    try {
-                        // Try to decode the JWT to show role information
-                        const base64Url = token.split('.')[1];
-                        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                        }).join(''));
-                        
-                        const payload = JSON.parse(jsonPayload);
-                        console.log("JWT payload:", payload);
-                        
-                        // Log authentication attempt with token details
-                        if (payload.roles) {
-                            console.log("Roles from token:", payload.roles);
-                            // Allow both ROLE_ADMIN and ROLE_PM
-                            if (payload.roles.includes("ROLE_ADMIN") || payload.roles.includes("ROLE_PM")) {
-                                authStatusDiv.className = 'alert alert-success mb-3';
-                                authStatusDiv.innerHTML = `
-                                    <strong>Authenticated as Product Manager</strong><br>
-                                    Username: ${payload.sub}<br>
-                                    Roles: ${payload.roles.join(', ')}<br>
-                                    You have access to product management features.
-                                `;
-                                // Optionally call tryDirectImageUpdate();
-                                tryDirectImageUpdate();
-                                return;
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Error parsing JWT:", e);
-                    }
-                }
+            if (token) {
+                // User is logged in
+                authLinks.style.display = 'none';
+                logoutLink.style.display = 'block';
                 
-                // Try the API endpoint
-                const response = await fetchWithAuth(`${API_URL}/auth/check-admin`);
-                console.log("Auth check response status:", response.status);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log("Auth check data:", data);
+                try {
+                    // Decode JWT token
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    console.log('User roles:', payload.roles); // Debug log
                     
-                    if (data.isAdmin) {
+                    if (payload.roles && payload.roles.includes('ROLE_ADMIN')) {
+                        // Admin has access to everything
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'block';
+                        productManagementLink.style.display = 'block';
                         authStatusDiv.className = 'alert alert-success mb-3';
                         authStatusDiv.innerHTML = `
                             <strong>Authenticated as Admin</strong><br>
-                            Username: ${data.username}<br>
-                            You have full access to all features.
+                            Username: ${payload.sub}<br>
+                            Roles: ${payload.roles.join(', ')}<br>
+                            You have full access to all product management features.
                         `;
-                        
-                        // Try the alternative endpoints since we know user has admin role
                         tryDirectImageUpdate();
-                    } else if (token && payload && payload.roles && payload.roles.includes("ROLE_PM")) {
+                        // Load all product data after authentication
+                        loadProducts();
+                        loadCategories();
+                        loadCertifications();
+                    } else if (payload.roles && (payload.roles.includes('ROLE_PM') || payload.roles.includes('ROLE_PRODUCT_MANAGER'))) {
+                        // Product Manager has access to product management and basic pages
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'block';
                         authStatusDiv.className = 'alert alert-success mb-3';
                         authStatusDiv.innerHTML = `
                             <strong>Authenticated as Product Manager</strong><br>
@@ -488,42 +480,60 @@
                             You have access to product management features.
                         `;
                         tryDirectImageUpdate();
-                    } else {
+                        // Load all product data after authentication
+                        loadProducts();
+                        loadCategories();
+                        loadCertifications();
+                    } else if (payload.roles && payload.roles.includes('ROLE_OM')) {
+                        // Order Manager has access to order management only
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
                         authStatusDiv.className = 'alert alert-warning mb-3';
                         authStatusDiv.innerHTML = `
                             <strong>Insufficient Role</strong><br>
-                            You are logged in as ${data.username || (payload && payload.sub) || 'Unknown'} but do not have product management privileges.<br>
-                            ROLE_ADMIN or ROLE_PM is required for editing operations.
+                            You are logged in as ${payload.sub} but do not have product management privileges.<br>
+                            ROLE_ADMIN or ROLE_PM is required for product management.
+                        `;
+                    } else {
+                        // Regular users have limited access
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                        authStatusDiv.className = 'alert alert-warning mb-3';
+                        authStatusDiv.innerHTML = `
+                            <strong>Insufficient Role</strong><br>
+                            You are logged in as ${payload.sub} but do not have product management privileges.<br>
+                            ROLE_ADMIN or ROLE_PM is required for product management.
                         `;
                     }
-                } else {
-                    const errorText = await response.text();
-                    authStatusDiv.className = 'alert alert-warning mb-3';
+                } catch (error) {
+                    console.error("Error parsing JWT:", error);
+                    authStatusDiv.className = 'alert alert-danger mb-3';
                     authStatusDiv.innerHTML = `
-                        <strong>Authentication Check Failed</strong><br>
-                        Status: ${response.status} ${response.statusText}<br>
-                        Error: ${errorText}<br>
-                        Please verify your admin authentication.
+                        <strong>Authentication Error</strong><br>
+                        Error: ${error.message}<br>
+                        Please try logging in again.
                     `;
-                    
-                    // Still try the direct token check as a fallback
-                    if (token) {
-                        tryDirectImageUpdate();
-                    }
                 }
-            } catch (error) {
-                console.error("Auth check error:", error);
-                authStatusDiv.className = 'alert alert-danger mb-3';
+            } else {
+                // User is not logged in
+                authLinks.style.display = 'block';
+                logoutLink.style.display = 'none';
+                orderManagementLink.style.display = 'none';
+                addWorkerLink.style.display = 'none';
+                productManagementLink.style.display = 'none';
+                authStatusDiv.className = 'alert alert-warning mb-3';
                 authStatusDiv.innerHTML = `
-                    <strong>Authentication Check Error</strong><br>
-                    Error: ${error.message}<br>
-                    Token exists: ${token ? 'Yes' : 'No'}<br>
-                    <div>
-                        <button class="btn btn-sm btn-warning mt-2" onclick="patchSecurityConfig()">Patch Security Config</button>
-                        <button class="btn btn-sm btn-warning mt-2" onclick="tryDirectImageUpdate()">Try Direct Image Update</button>
-                    </div>
+                    <strong>Authentication Required</strong><br>
+                    Please log in to access product management features.
                 `;
             }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
         }
         
         // Try alternative approaches to update images
@@ -532,11 +542,6 @@
             console.log("Ready to try direct image update if needed");
         }
         
-        // Function to bypass security for testing (would need backend support)
-        async function patchSecurityConfig() {
-            alert("This would require a backend API to temporarily modify security. For now, please check the server logs and validate your admin credentials.");
-        }
-
         // Arrays to store temporary data
         let features = []; // array of strings
         let specifications = []; // array of {name: string, value: string} objects
@@ -547,273 +552,53 @@
         // Load all products
         async function loadProducts() {
             try {
-                // Use fetchWithAuth for the initial products list
+                // Use fetchWithAuth
                 const response = await fetchWithAuth(`${API_URL}/products`);
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to load products');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const products = await response.json();
-                if (!Array.isArray(products)) {
-                    throw new Error('Invalid response format: products is not an array');
-                }
                 const productsList = document.getElementById('productsList');
                 productsList.innerHTML = '';
-
-                for (const product of products) {
-                    try {
-                        // Use fetchWithAuth for all subsequent detail fetches
-                        const [featuresResponse, specificationsResponse, certificationsResponse, 
-                              nutritionalInfoResponse, weightOptionsResponse] = await Promise.all([
-                            fetchWithAuth(`${API_URL}/products/${product.id}/features`),
-                            fetchWithAuth(`${API_URL}/products/${product.id}/specifications`),
-                            fetchWithAuth(`${API_URL}/products/${product.id}/certifications`),
-                            fetchWithAuth(`${API_URL}/products/${product.id}/nutritional-info`),
-                            fetchWithAuth(`${API_URL}/products/${product.id}/weight-options`)
-                        ]);
-                        
-                        const features = await featuresResponse.json();
-                        const specifications = await specificationsResponse.json();
-                        const certifications = await certificationsResponse.json();
-                        
-                        let nutritionalInfo = null;
-                        if (nutritionalInfoResponse.ok) {
-                            nutritionalInfo = await nutritionalInfoResponse.json();
-                        }
-                        
-                        const weightOptions = await weightOptionsResponse.json();
-                        
-                        // Create product card with all details
-                        const productCard = document.createElement('div');
-                        productCard.className = 'col-md-4';
-                        
-                        // Create feature HTML
-                        let featuresHtml = '';
-                        if (features && features.length > 0) {
-                            featuresHtml = `
+                
+                products.forEach(product => {
+                    const productCard = document.createElement('div');
+                    productCard.className = 'col-md-4 mb-3';
+                    productCard.innerHTML = `
+                        <div class="card product-card">
+                            <div class="position-relative">
+                                <img src="${BACKEND_URL}/api/products/${product.id}/image" class="card-img-top product-image" alt="${product.name}">
+                                <button class="btn btn-sm btn-primary position-absolute bottom-0 end-0 m-2" onclick="editProductPhoto(${product.id})">
+                                    <i class="bi bi-pencil"></i> Edit Photo
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title">${product.name}</h5>
+                                    <button class="btn btn-sm btn-info" onclick="editProductBasicInfo(${product.id}, ${JSON.stringify(product).replace(/"/g, '&quot;')})">Edit Details</button>
+                                </div>
+                                <p class="card-text">${product.description || ''}</p>
+                                <p class="card-text">
+                                    <strong>Price:</strong> $${product.pricePerKg}/kg<br>
+                                    <strong>Inventory:</strong> ${product.inventory}<br>
+                                    ${product.hasDiscount ? `<strong>Discount:</strong> ${product.discountPercentage}%<br>` : ''}
+                                    ${product.isNewArrival ? '<span class="badge bg-success">New Arrival</span> ' : ''}
+                                    ${product.isBestSeller ? '<span class="badge bg-warning">Best Seller</span> ' : ''}
+                                    ${product.isFeatured ? '<span class="badge bg-info">Featured</span>' : ''}
+                                </p>
+                                ${featuresHtml}
+                                ${specificationsHtml}
+                                ${certificationsHtml}
+                                ${weightOptionsHtml}
+                                ${nutritionalInfoHtml}
                                 <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">Features:</h6>
-                                        <button class="btn btn-sm btn-success" onclick="addMoreFeatures(${product.id})">Add More</button>
-                                    </div>
-                                    <ul class="list-group">
-                                        ${features.map(feature => 
-                                            `<li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>${feature.feature}</span>
-                                                <div>
-                                                    <button class="btn btn-sm btn-info" onclick="editFeature(${product.id}, ${feature.id}, '${feature.feature.replace(/'/g, "\\'")}')">Edit</button>
-                                                    <button class="btn btn-sm btn-danger" onclick="deleteFeature(${product.id}, ${feature.id})">Delete</button>
-                                                </div>
-                                            </li>`
-                                        ).join('')}
-                                    </ul>
-                                </div>
-                            `;
-                        } else {
-                            featuresHtml = `
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">Features:</h6>
-                                        <button class="btn btn-sm btn-success" onclick="addMoreFeatures(${product.id})">Add</button>
-                                    </div>
-                                    <p class="text-muted">No features available</p>
-                                </div>
-                            `;
-                        }
-                        
-                        // Create specifications HTML
-                        let specificationsHtml = '';
-                        if (specifications && specifications.length > 0) {
-                            specificationsHtml = `
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">Specifications:</h6>
-                                        <button class="btn btn-sm btn-success" onclick="addMoreSpecifications(${product.id})">Add More</button>
-                                    </div>
-                                    <ul class="list-group">
-                                        ${specifications.map(spec => 
-                                            `<li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span><strong>${spec.name}:</strong> ${spec.value}</span>
-                                                <div>
-                                                    <button class="btn btn-sm btn-info" onclick="editSpecification(${product.id}, ${spec.id}, '${spec.specName.replace(/'/g, "\\'")}', '${spec.specValue.replace(/'/g, "\\'")}')">Edit</button>
-                                                    <button class="btn btn-sm btn-danger" onclick="deleteSpecification(${product.id}, ${spec.id})">Delete</button>
-                                                </div>
-                                            </li>`
-                                        ).join('')}
-                                    </ul>
-                                </div>
-                            `;
-                        } else {
-                            specificationsHtml = `
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">Specifications:</h6>
-                                        <button class="btn btn-sm btn-success" onclick="addMoreSpecifications(${product.id})">Add</button>
-                                    </div>
-                                    <p class="text-muted">No specifications available</p>
-                                </div>
-                            `;
-                        }
-                        
-                        // Create certifications HTML
-                        let certificationsHtml = '';
-                        if (certifications && certifications.length > 0) {
-                            certificationsHtml = `
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">Certifications:</h6>
-                                        <button class="btn btn-sm btn-success" onclick="addMoreCertifications(${product.id})">Add More</button>
-                                    </div>
-                                    <ul class="list-group">
-                                        ${certifications.map(cert => 
-                                            `<li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>${cert.name}</span>
-                                                <div>
-                                                    <button class="btn btn-sm btn-info" onclick="editCertification(${cert.id}, '${cert.name.replace(/'/g, "\\'")}', '${(cert.description || '').replace(/'/g, "\\'")}')">Edit</button>
-                                                    <button class="btn btn-sm btn-danger" onclick="removeProductCertification(${product.id}, ${cert.id})">Remove</button>
-                                                </div>
-                                            </li>`
-                                        ).join('')}
-                                    </ul>
-                                </div>
-                            `;
-                        } else {
-                            certificationsHtml = `
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">Certifications:</h6>
-                                        <button class="btn btn-sm btn-success" onclick="addMoreCertifications(${product.id})">Add</button>
-                                    </div>
-                                    <p class="text-muted">No certifications available</p>
-                                </div>
-                            `;
-                        }
-                        
-                        // Create weight options HTML
-                        let weightOptionsHtml = '';
-                        if (weightOptions && weightOptions.length > 0) {
-                            weightOptionsHtml = `
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">Weight Options:</h6>
-                                        <button class="btn btn-sm btn-success" onclick="addMoreWeightOptions(${product.id})">Add More</button>
-                                    </div>
-                                    <div class="row">
-                                        ${weightOptions.map(option => {
-                                            return `
-                                            <div class="col-md-6 mb-2">
-                                                <div class="card">
-                                                    ${option.packagingPhoto ? 
-                                                        `<img src="${BACKEND_URL}${option.packagingPhoto}" class="card-img-top" style="max-height: 100px; object-fit: contain;" alt="Packaging">` : 
-                                                        ''}
-                                                    <div class="card-body">
-                                                        <p class="card-text">
-                                                            <strong>Weight:</strong> ${option.weightValue}g<br>
-                                                            <strong>Price:</strong> $${option.price}
-                                                        </p>
-                                                        <div class="d-flex gap-1 flex-wrap">
-                                                            <button class="btn btn-sm btn-primary" onclick="editWeightOptionPhoto(${product.id}, ${option.id})">Edit Photo</button>
-                                                            <button class="btn btn-sm btn-info" onclick="editWeightOptionInfo(${product.id}, ${option.id}, ${option.weightValue}, ${option.price})">Edit Info</button>
-                                                            <button class="btn btn-sm btn-danger" onclick="deleteWeightOption(${product.id}, ${option.id})">Delete</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
-                                    
-                                </div>
-                            `;
-                        }
-                        
-                        // Create nutritional info HTML
-                        let nutritionalInfoHtml = '';
-                        if (nutritionalInfo) {
-                            nutritionalInfoHtml = `
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">Nutritional Information:</h6>
-                                        <button class="btn btn-sm btn-info" onclick="editNutritionalInfo(${product.id})">Edit Info</button>
-                                    </div>
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <p class="mb-1"><strong>Serving Size:</strong> ${nutritionalInfo.servingSize || 'N/A'}</p>
-                                            <p class="mb-1"><strong>Servings Per Container:</strong> ${nutritionalInfo.servingsPerContainer || 'N/A'}</p>
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <p class="mb-1"><strong>Calories:</strong> ${nutritionalInfo.calories || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Total Fat:</strong> ${nutritionalInfo.totalFat || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Saturated Fat:</strong> ${nutritionalInfo.saturatedFat || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Trans Fat:</strong> ${nutritionalInfo.transFat || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Cholesterol:</strong> ${nutritionalInfo.cholesterol || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Sodium:</strong> ${nutritionalInfo.sodium || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Total Carbohydrates:</strong> ${nutritionalInfo.totalCarbohydrates || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Dietary Fiber:</strong> ${nutritionalInfo.dietaryFiber || 'N/A'}</p>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <p class="mb-1"><strong>Sugars:</strong> ${nutritionalInfo.sugars || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Protein:</strong> ${nutritionalInfo.protein || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Vitamin A:</strong> ${nutritionalInfo.vitaminA || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Vitamin C:</strong> ${nutritionalInfo.vitaminC || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Calcium:</strong> ${nutritionalInfo.calcium || 'N/A'}</p>
-                                                    <p class="mb-1"><strong>Iron:</strong> ${nutritionalInfo.iron || 'N/A'}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        } else {
-                            nutritionalInfoHtml = `
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">Nutritional Information:</h6>
-                                        <button class="btn btn-sm btn-success" onclick="editNutritionalInfo(${product.id})">Add Info</button>
-                                    </div>
-                                    <p class="text-muted">No nutritional information available</p>
-                                </div>
-                            `;
-                        }
-                        
-                        productCard.innerHTML = `
-                            <div class="card product-card">
-                                <div class="position-relative">
-                                    <img src="${BACKEND_URL}/api/products/${product.id}/image" class="card-img-top product-image" alt="${product.name}">
-                                    <button class="btn btn-sm btn-primary position-absolute bottom-0 end-0 m-2" onclick="editProductPhoto(${product.id})">
-                                        <i class="bi bi-pencil"></i> Edit Photo
-                                    </button>
-                                </div>
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h5 class="card-title">${product.name}</h5>
-                                        <button class="btn btn-sm btn-info" onclick="editProductBasicInfo(${product.id}, ${JSON.stringify(product).replace(/"/g, '&quot;')})">Edit Details</button>
-                                    </div>
-                                    <p class="card-text">${product.description || ''}</p>
-                                    <p class="card-text">
-                                        <strong>Price:</strong> $${product.pricePerKg}/kg<br>
-                                        <strong>Inventory:</strong> ${product.inventory}<br>
-                                        ${product.hasDiscount ? `<strong>Discount:</strong> ${product.discountPercentage}%<br>` : ''}
-                                        ${product.isNewArrival ? '<span class="badge bg-success">New Arrival</span> ' : ''}
-                                        ${product.isBestSeller ? '<span class="badge bg-warning">Best Seller</span> ' : ''}
-                                        ${product.isFeatured ? '<span class="badge bg-info">Featured</span>' : ''}
-                                    </p>
-                                    ${featuresHtml}
-                                    ${specificationsHtml}
-                                    ${certificationsHtml}
-                                    ${weightOptionsHtml}
-                                    ${nutritionalInfoHtml}
-                                    <div class="mt-3">
-                                        <button class="btn btn-danger btn-sm me-2" onclick="deleteProduct(${product.id})">Delete</button>
-                                    </div>
+                                    <button class="btn btn-danger btn-sm me-2" onclick="deleteProduct(${product.id})">Delete</button>
                                 </div>
                             </div>
-                        `;
-                        productsList.appendChild(productCard);
-                    } catch (error) {
-                        console.error(`Error loading details for product ${product.id}:`, error);
-                    }
-                }
+                        </div>
+                    `;
+                    productsList.appendChild(productCard);
+                });
             } catch (error) {
                 console.error('Error loading products:', error);
                 const productsList = document.getElementById('productsList');
@@ -2135,10 +1920,9 @@
         });
 
         // Load initial data
-        loadProducts();
-        loadCategories();
-        loadCertifications();
-        checkAuthStatus(); // Check authentication status
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+        });
 
         // Edit specification
         async function editSpecification(productId, specificationId, currentSpecName, currentSpecValue) {
