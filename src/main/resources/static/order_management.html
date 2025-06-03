@@ -91,32 +91,32 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="index.html">Rice Products</a>
+            <a class="navbar-brand" href="#">Rice Products</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html">Home</a>
+                        <a class="nav-link" href="index.html#home">Home</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="all_products.html">All Products</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="productManagementLink">
                         <a class="nav-link" href="product_management.html">Product Management</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="orderManagementLink">
                         <a class="nav-link active" href="order_management.html">Order Management</a>
+                    </li>
+                    <li class="nav-item" id="authLinks">
+                        <a class="nav-link" href="login.html">Login</a>
+                    </li>
+                    <li class="nav-item" id="logoutLink" style="display: none;">
+                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
                     </li>
                     <li class="nav-item" id="addWorkerLink" style="display: none;">
                         <a class="nav-link" href="NewWorker.html">Add Worker</a>
-                    </li>
-                    <li class="nav-item" id="loginLink" style="display:none;">
-                        <a class="nav-link" href="login.html">Login</a>
-                    </li>
-                    <li class="nav-item" id="logoutLink" style="display:none;">
-                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
                     </li>
                 </ul>
             </div>
@@ -215,15 +215,15 @@
                                 <h6>Order Summary</h6>
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>Subtotal:</span>
-                                    <span id="modalSubtotal">$0.00</span>
+                                    <span id="modalSubtotal">Rs.0.00</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>Shipping:</span>
-                                    <span id="modalShipping">$0.00</span>
+                                    <span id="modalShipping">Rs.0.00</span>
                                 </div>
                                 <div class="d-flex justify-content-between fw-bold">
                                     <span>Total:</span>
-                                    <span id="modalTotal">$0.00</span>
+                                    <span id="modalTotal">Rs.0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -321,6 +321,9 @@
         // Check Authentication
         function checkAuth() {
             const authStatusDiv = document.getElementById('authStatus');
+            const authLinks = document.getElementById('authLinks');
+            const logoutLink = document.getElementById('logoutLink');
+            
             authStatusDiv.style.display = 'block';
             authStatusDiv.className = 'alert alert-info mb-3';
             authStatusDiv.textContent = 'Checking authentication status...';
@@ -330,7 +333,7 @@
             if (!token) {
                 authStatusDiv.className = 'alert alert-warning mb-3';
                 authStatusDiv.innerHTML = 'Please log in to access order management.';
-                loginLink.style.display = 'block';
+                authLinks.style.display = 'block';
                 logoutLink.style.display = 'none';
                 return;
             }
@@ -356,7 +359,7 @@
                             Roles: ${payload.roles.join(', ')}<br>
                             You have access to order management features.
                         `;
-                        loginLink.style.display = 'none';
+                        authLinks.style.display = 'none';
                         logoutLink.style.display = 'block';
                         loadOrderData();
                         loadOrderStatuses();
@@ -371,7 +374,7 @@
                     You are logged in as ${payload.sub} but do not have order management privileges.<br>
                     ROLE_ADMIN or ROLE_OM is required for order management.
                 `;
-                loginLink.style.display = 'block';
+                authLinks.style.display = 'block';
                 logoutLink.style.display = 'none';
             } catch (error) {
                 console.error("Auth check error:", error);
@@ -381,11 +384,74 @@
                     Error: ${error.message}<br>
                     Please try logging in again.
                 `;
-                loginLink.style.display = 'block';
+                authLinks.style.display = 'block';
                 logoutLink.style.display = 'none';
             }
         }
-        
+
+        // Check authentication status for navbar
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token');
+            const authLinks = document.getElementById('authLinks');
+            const logoutLink = document.getElementById('logoutLink');
+            const orderManagementLink = document.getElementById('orderManagementLink');
+            const addWorkerLink = document.getElementById('addWorkerLink');
+            const productManagementLink = document.getElementById('productManagementLink');
+            
+            if (token) {
+                // User is logged in
+                authLinks.style.display = 'none';
+                logoutLink.style.display = 'block';
+                
+                // Fetch user info
+                fetch('http://localhost:8080/api/auth/user', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Check user role and adjust navigation
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    console.log('User roles:', payload.roles); // Debug log
+                    
+                    if (payload.roles && payload.roles.includes('ROLE_ADMIN')) {
+                        // Admin has access to everything
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'block';
+                        productManagementLink.style.display = 'block';
+                    } else if (payload.roles && payload.roles.includes('ROLE_OM')) {
+                        // Order Manager has access to order management
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                    } else if (payload.roles && (payload.roles.includes('ROLE_PM') || payload.roles.includes('ROLE_PRODUCT_MANAGER'))) {
+                        // Product Manager has access to product management and basic pages
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'block';
+                    } else {
+                        // Regular users have limited access
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching user info:', error);
+                    logout();
+                });
+            } else {
+                // User is not logged in
+                authLinks.style.display = 'block';
+                logoutLink.style.display = 'none';
+                orderManagementLink.style.display = 'none';
+                addWorkerLink.style.display = 'none';
+                productManagementLink.style.display = 'none';
+            }
+        }
+
         // Load Order Data
         function loadOrderData() {
             loadingSpinner.style.display = 'block';
@@ -550,7 +616,7 @@
                                 <p class="card-text"><strong>Date:</strong> ${orderDate}</p>
                                 <p class="card-text"><strong>Customer:</strong> ${order.firstName} ${order.lastName}</p>
                                 <p class="card-text"><strong>Email:</strong> ${order.email}</p>
-                                <p class="card-text"><strong>Total:</strong> $${order.total.toFixed(2)}</p>
+                                <p class="card-text"><strong>Total:</strong> Rs.${order.total.toFixed(2)}</p>
                                 <p class="card-text"><strong>Items:</strong> ${itemCount}</p>
                                 <button class="btn btn-primary w-100" onclick="viewOrderDetails(${order.id})">
                                     View Details
@@ -603,9 +669,9 @@
                     statusSpan.classList.add('bg-secondary');
             }
             
-            document.getElementById('modalSubtotal').textContent = `$${order.subtotal.toFixed(2)}`;
-            document.getElementById('modalShipping').textContent = `$${order.shipping.toFixed(2)}`;
-            document.getElementById('modalTotal').textContent = `$${order.total.toFixed(2)}`;
+            document.getElementById('modalSubtotal').textContent = `Rs.${order.subtotal.toFixed(2)}`;
+            document.getElementById('modalShipping').textContent = `Rs.${order.shipping.toFixed(2)}`;
+            document.getElementById('modalTotal').textContent = `Rs.${order.total.toFixed(2)}`;
             
             document.getElementById('modalCustomerName').textContent = `${order.firstName} ${order.lastName}`;
             document.getElementById('modalEmail').textContent = order.email;
@@ -628,7 +694,7 @@
             
             order.orderItems.forEach(item => {
                 const itemTotal = item.price * item.quantity;
-                const weightDisplay = item.weight ? `${item.weight}g` : 'N/A';
+                const weightDisplay = item.weight ? `${item.weight/1000}kg` : 'N/A';
                 const imageUrl = item.productImage || 'https://via.placeholder.com/50';
                 
                 itemsContainer.innerHTML += `
@@ -642,9 +708,9 @@
                             </div>
                         </td>
                         <td>${weightDisplay}</td>
-                        <td>$${item.price.toFixed(2)}</td>
+                        <td>Rs.${item.price.toFixed(2)}</td>
                         <td>${item.quantity}</td>
-                        <td>$${itemTotal.toFixed(2)}</td>
+                        <td>Rs.${itemTotal.toFixed(2)}</td>
                     </tr>
                 `;
             });
@@ -741,12 +807,13 @@
         // Logout function
         function logout() {
             localStorage.removeItem('token');
-            window.location.href = 'login.html';
+            window.location.reload();
         }
 
         // Event Listeners
         window.addEventListener('DOMContentLoaded', () => {
-            checkAuth();
+            checkAuthStatus(); // Check navbar auth status
+            checkAuth(); // Check order management specific auth
             
             // Filter change events
             statusFilter.addEventListener('change', filterAndDisplayOrders);
@@ -756,24 +823,6 @@
             // Status update button
             document.getElementById('saveStatus').addEventListener('click', updateOrderStatus);
         });
-
-        // Function to check user role and show/hide admin links
-        async function checkUserRole() {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:8080/api/auth/user', {
-                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-                });
-                const user = await response.json();
-                if (user.roles && user.roles.includes('ROLE_ADMIN')) {
-                    document.getElementById('addWorkerLink').style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error checking user role:', error);
-            }
-        }
-        // Call checkUserRole after login
-        checkUserRole();
     </script>
 </body>
 </html>

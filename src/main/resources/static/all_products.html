@@ -63,7 +63,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="index.html">Rice Products</a>
+            <a class="navbar-brand" href="#">Rice Products</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -75,8 +75,20 @@
                     <li class="nav-item">
                         <a class="nav-link active" href="all_products.html">All Products</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="productManagementLink">
                         <a class="nav-link" href="product_management.html">Product Management</a>
+                    </li>
+                    <li class="nav-item" id="orderManagementLink">
+                        <a class="nav-link" href="order_management.html">Order Management</a>
+                    </li>
+                    <li class="nav-item" id="authLinks">
+                        <a class="nav-link" href="login.html">Login</a>
+                    </li>
+                    <li class="nav-item" id="logoutLink" style="display: none;">
+                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
+                    </li>
+                    <li class="nav-item" id="addWorkerLink" style="display: none;">
+                        <a class="nav-link" href="NewWorker.html">Add Worker</a>
                     </li>
                 </ul>
             </div>
@@ -97,6 +109,74 @@
     <script>
         const API_URL = 'http://localhost:8080/api';
         const BACKEND_URL = 'http://localhost:8080';
+
+        // Check authentication status for navbar
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token');
+            const authLinks = document.getElementById('authLinks');
+            const logoutLink = document.getElementById('logoutLink');
+            const orderManagementLink = document.getElementById('orderManagementLink');
+            const addWorkerLink = document.getElementById('addWorkerLink');
+            const productManagementLink = document.getElementById('productManagementLink');
+            
+            if (token) {
+                // User is logged in
+                authLinks.style.display = 'none';
+                logoutLink.style.display = 'block';
+                
+                // Fetch user info
+                fetch('http://localhost:8080/api/auth/user', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Check user role and adjust navigation
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    console.log('User roles:', payload.roles); // Debug log
+                    
+                    if (payload.roles && payload.roles.includes('ROLE_ADMIN')) {
+                        // Admin has access to everything
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'block';
+                        productManagementLink.style.display = 'block';
+                    } else if (payload.roles && payload.roles.includes('ROLE_OM')) {
+                        // Order Manager has access to order management
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                    } else if (payload.roles && (payload.roles.includes('ROLE_PM') || payload.roles.includes('ROLE_PRODUCT_MANAGER'))) {
+                        // Product Manager has access to product management and basic pages
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'block';
+                    } else {
+                        // Regular users have limited access
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching user info:', error);
+                    logout();
+                });
+            } else {
+                // User is not logged in
+                authLinks.style.display = 'block';
+                logoutLink.style.display = 'none';
+                orderManagementLink.style.display = 'none';
+                addWorkerLink.style.display = 'none';
+                productManagementLink.style.display = 'none';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.reload();
+        }
 
         // Load all products
         async function loadProducts() {
@@ -156,10 +236,10 @@
 
                                     <div class="price-container">
                                         ${product.hasDiscount ? 
-                                            `<span class="discount-price">$${product.pricePerKg}/kg</span>
-                                             <span class="text-danger">$${discountedPrice}/kg</span>
+                                            `<span class="discount-price">Rs.${product.pricePerKg}/kg</span>
+                                             <span class="text-danger">Rs.${discountedPrice}/kg</span>
                                              <span class="badge bg-danger">${product.discountPercentage}% OFF</span>` :
-                                            `<span>$${product.pricePerKg}/kg</span>`
+                                            `<span>Rs.${product.pricePerKg}/kg</span>`
                                         }
                                     </div>
 
@@ -202,8 +282,8 @@
                                                             ''}
                                                         <div class="card-body p-2">
                                                             <p class="card-text mb-0">
-                                                                <strong>${option.weightValue}g</strong><br>
-                                                                $${option.price}
+                                                                <strong>${option.weightValue/1000}kg</strong><br>
+                                                                Rs.${option.price}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -245,8 +325,11 @@
             }
         }
 
-        // Load products when the page loads
-        document.addEventListener('DOMContentLoaded', loadProducts);
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            loadProducts();
+        });
     </script>
 </body>
 </html> 

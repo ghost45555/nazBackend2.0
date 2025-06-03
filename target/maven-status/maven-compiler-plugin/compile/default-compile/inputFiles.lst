@@ -53,6 +53,7 @@ D:\works\rice websites\testings\backend Naz Admin Final\backendFinalNaz\src\main
 D:\works\rice websites\testings\backend Naz Admin Final\backendFinalNaz\src\main\java\com\example\productmanager\model\Certification.java
 D:\works\rice websites\testings\backend Naz Admin Final\backendFinalNaz\src\main\java\com\example\productmanager\service\CategoryService.java
 D:\works\rice websites\testings\backend Naz Admin Final\backendFinalNaz\src\main\java\com\example\productmanager\dto\WeightOptionDTO.java
+D:\works\rice websites\testings\backend Naz Admin Final\backendFinalNaz\src\main\java\com\example\productmanager\config\DatabaseInitializer.java
 D:\works\rice websites\testings\backend Naz Admin Final\backendFinalNaz\src\main\java\com\example\productmanager\dto\JwtResponse.java
 D:\works\rice websites\testings\backend Naz Admin Final\backendFinalNaz\src\main\java\com\example\productmanager\entity\OrderItem.java
 D:\works\rice websites\testings\backend Naz Admin Final\backendFinalNaz\src\main\java\com\example\productmanager\controller\AdminController.java

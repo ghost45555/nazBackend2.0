@@ -239,15 +239,15 @@
                             <div class="col-md-6 offset-md-6">
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>Subtotal:</span>
-                                    <span id="subtotal">Rs.0.00</span>
+                                    <span id="subtotal">$0.00</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-2">
                                     <span>Shipping:</span>
-                                    <span id="shipping">Rs.0.00</span>
+                                    <span id="shipping">$0.00</span>
                                 </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Total:</span>
-                                    <strong id="total">Rs.0.00</strong>
+                                <div class="d-flex justify-content-between">
+                                    <strong>Total:</strong>
+                                    <strong id="total">$0.00</strong>
                                 </div>
                             </div>
                         </div>
@@ -401,9 +401,9 @@
             renderItems(order.items);
             
             // Set totals
-            subtotalElement.textContent = `Rs.${order.subtotal.toFixed(2)}`;
-            shippingElement.textContent = `Rs.${order.shipping.toFixed(2)}`;
-            totalElement.textContent = `Rs.${order.total.toFixed(2)}`;
+            subtotalElement.textContent = `$${order.subtotal.toFixed(2)}`;
+            shippingElement.textContent = `$${order.shipping.toFixed(2)}`;
+            totalElement.textContent = `$${order.total.toFixed(2)}`;
             
             // Render order tracking
             renderOrderTracking(order.status);
@@ -428,11 +428,11 @@
                     <div class="order-item-details">
                         <div class="d-flex justify-content-between mb-1">
                             <h6 class="mb-0">${item.productName}</h6>
-                            <span>Rs.${totalPrice.toFixed(2)}</span>
+                            <span>$${totalPrice.toFixed(2)}</span>
                         </div>
-                        <div class="text-muted small">${item.weight}kg</div>
+                        <div class="text-muted small">${item.weight}g</div>
                         <div class="mt-2">
-                            <span class="text-muted">Rs.${item.price.toFixed(2)} × ${item.quantity}</span>
+                            <span class="text-muted">$${item.price.toFixed(2)} × ${item.quantity}</span>
                         </div>
                     </div>
                 `;

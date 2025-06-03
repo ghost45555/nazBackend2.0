@@ -49,7 +49,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="index.html">Rice Products</a>
+            <a class="navbar-brand" href="#">Rice Products</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -59,10 +59,19 @@
                         <a class="nav-link" href="index.html#home">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html#products">All Products</a>
+                        <a class="nav-link" href="all_products.html">All Products</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="productManagementLink">
                         <a class="nav-link active" href="product_management.html">Product Management</a>
+                    </li>
+                    <li class="nav-item" id="orderManagementLink">
+                        <a class="nav-link" href="order_management.html">Order Management</a>
+                    </li>
+                    <li class="nav-item" id="authLinks">
+                        <a class="nav-link" href="login.html">Login</a>
+                    </li>
+                    <li class="nav-item" id="logoutLink" style="display: none;">
+                        <a class="nav-link" href="#" onclick="logout()">Logout</a>
                     </li>
                     <li class="nav-item" id="addWorkerLink" style="display: none;">
                         <a class="nav-link" href="NewWorker.html">Add Worker</a>
@@ -415,9 +424,15 @@
             return response;
         }
 
-        // Check authentication status
+        // Check authentication status for navbar
         async function checkAuthStatus() {
             const authStatusDiv = document.getElementById('authStatus');
+            const authLinks = document.getElementById('authLinks');
+            const logoutLink = document.getElementById('logoutLink');
+            const orderManagementLink = document.getElementById('orderManagementLink');
+            const addWorkerLink = document.getElementById('addWorkerLink');
+            const productManagementLink = document.getElementById('productManagementLink');
+            
             authStatusDiv.style.display = 'block';
             authStatusDiv.className = 'alert alert-info mb-3';
             authStatusDiv.textContent = 'Checking authentication status...';
@@ -426,7 +441,6 @@
             
             try {
                 console.log("Making auth check request...");
-                // Display token info
                 if (token) {
                     try {
                         // Try to decode the JWT to show role information
@@ -439,11 +453,34 @@
                         const payload = JSON.parse(jsonPayload);
                         console.log("JWT payload:", payload);
                         
-                        // Log authentication attempt with token details
+                        // Update navigation links based on authentication
+                        authLinks.style.display = 'none';
+                        logoutLink.style.display = 'block';
+                        
+                        // Check roles and update UI accordingly
                         if (payload.roles) {
                             console.log("Roles from token:", payload.roles);
-                            // Allow both ROLE_ADMIN and ROLE_PM
-                            if (payload.roles.includes("ROLE_ADMIN") || payload.roles.includes("ROLE_PM")) {
+                            
+                            // Show/hide links based on roles
+                            if (payload.roles.includes("ROLE_ADMIN")) {
+                                // Admin has access to everything
+                                orderManagementLink.style.display = 'block';
+                                addWorkerLink.style.display = 'block';
+                                productManagementLink.style.display = 'block';
+                                
+                                authStatusDiv.className = 'alert alert-success mb-3';
+                                authStatusDiv.innerHTML = `
+                                    <strong>Authenticated as Admin</strong><br>
+                                    Username: ${payload.sub}<br>
+                                    Roles: ${payload.roles.join(', ')}<br>
+                                    You have full access to all features.
+                                `;
+                            } else if (payload.roles.includes("ROLE_PM")) {
+                                // Product Manager has access to product management
+                                orderManagementLink.style.display = 'none';
+                                addWorkerLink.style.display = 'none';
+                                productManagementLink.style.display = 'block';
+                                
                                 authStatusDiv.className = 'alert alert-success mb-3';
                                 authStatusDiv.innerHTML = `
                                     <strong>Authenticated as Product Manager</strong><br>
@@ -451,66 +488,40 @@
                                     Roles: ${payload.roles.join(', ')}<br>
                                     You have access to product management features.
                                 `;
-                                // Optionally call tryDirectImageUpdate();
-                                tryDirectImageUpdate();
-                                return;
+                            } else if (payload.roles.includes("ROLE_OM")) {
+                                // Order Manager has access to order management
+                                orderManagementLink.style.display = 'block';
+                                addWorkerLink.style.display = 'none';
+                                productManagementLink.style.display = 'none';
+                                
+                                authStatusDiv.className = 'alert alert-success mb-3';
+                                authStatusDiv.innerHTML = `
+                                    <strong>Authenticated as Order Manager</strong><br>
+                                    Username: ${payload.sub}<br>
+                                    Roles: ${payload.roles.join(', ')}<br>
+                                    You have access to order management features.
+                                `;
                             }
+                            return;
                         }
                     } catch (e) {
                         console.error("Error parsing JWT:", e);
                     }
                 }
                 
-                // Try the API endpoint
-                const response = await fetchWithAuth(`${API_URL}/auth/check-admin`);
-                console.log("Auth check response status:", response.status);
+                // If we get here, either there's no token or the token parsing failed
+                authLinks.style.display = 'block';
+                logoutLink.style.display = 'none';
+                orderManagementLink.style.display = 'none';
+                addWorkerLink.style.display = 'none';
+                productManagementLink.style.display = 'none';
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log("Auth check data:", data);
-                    
-                    if (data.isAdmin) {
-                        authStatusDiv.className = 'alert alert-success mb-3';
-                        authStatusDiv.innerHTML = `
-                            <strong>Authenticated as Admin</strong><br>
-                            Username: ${data.username}<br>
-                            You have full access to all features.
-                        `;
-                        
-                        // Try the alternative endpoints since we know user has admin role
-                        tryDirectImageUpdate();
-                    } else if (token && payload && payload.roles && payload.roles.includes("ROLE_PM")) {
-                        authStatusDiv.className = 'alert alert-success mb-3';
-                        authStatusDiv.innerHTML = `
-                            <strong>Authenticated as Product Manager</strong><br>
-                            Username: ${payload.sub}<br>
-                            Roles: ${payload.roles.join(', ')}<br>
-                            You have access to product management features.
-                        `;
-                        tryDirectImageUpdate();
-                    } else {
-                        authStatusDiv.className = 'alert alert-warning mb-3';
-                        authStatusDiv.innerHTML = `
-                            <strong>Insufficient Role</strong><br>
-                            You are logged in as ${data.username || (payload && payload.sub) || 'Unknown'} but do not have product management privileges.<br>
-                            ROLE_ADMIN or ROLE_PM is required for editing operations.
-                        `;
-                    }
-                } else {
-                    const errorText = await response.text();
-                    authStatusDiv.className = 'alert alert-warning mb-3';
-                    authStatusDiv.innerHTML = `
-                        <strong>Authentication Check Failed</strong><br>
-                        Status: ${response.status} ${response.statusText}<br>
-                        Error: ${errorText}<br>
-                        Please verify your admin authentication.
-                    `;
-                    
-                    // Still try the direct token check as a fallback
-                    if (token) {
-                        tryDirectImageUpdate();
-                    }
-                }
+                authStatusDiv.className = 'alert alert-warning mb-3';
+                authStatusDiv.innerHTML = `
+                    <strong>Not Authenticated</strong><br>
+                    Please log in to access management features.
+                `;
+                
             } catch (error) {
                 console.error("Auth check error:", error);
                 authStatusDiv.className = 'alert alert-danger mb-3';
@@ -525,7 +536,20 @@
                 `;
             }
         }
-        
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.reload();
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            loadCategories();
+            loadProducts();
+            loadCertifications();
+        });
+
         // Try alternative approaches to update images
         async function tryDirectImageUpdate() {
             // Do nothing for now, this will be used to test direct API calls if needed
@@ -633,7 +657,7 @@
                                     <ul class="list-group">
                                         ${specifications.map(spec => 
                                             `<li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span><strong>${spec.name}:</strong> ${spec.value}</span>
+                                                <span><strong>${spec.specName}:</strong> ${spec.specValue}</span>
                                                 <div>
                                                     <button class="btn btn-sm btn-info" onclick="editSpecification(${product.id}, ${spec.id}, '${spec.specName.replace(/'/g, "\\'")}', '${spec.specValue.replace(/'/g, "\\'")}')">Edit</button>
                                                     <button class="btn btn-sm btn-danger" onclick="deleteSpecification(${product.id}, ${spec.id})">Delete</button>
@@ -708,8 +732,8 @@
                                                         ''}
                                                     <div class="card-body">
                                                         <p class="card-text">
-                                                            <strong>Weight:</strong> ${option.weightValue}g<br>
-                                                            <strong>Price:</strong> $${option.price}
+                                                            <strong>Weight:</strong> ${option.weightValue/1000}kg<br>
+                                                            <strong>Price:</strong> Rs.${option.price}
                                                         </p>
                                                         <div class="d-flex gap-1 flex-wrap">
                                                             <button class="btn btn-sm btn-primary" onclick="editWeightOptionPhoto(${product.id}, ${option.id})">Edit Photo</button>
@@ -791,7 +815,7 @@
                                     </div>
                                     <p class="card-text">${product.description || ''}</p>
                                     <p class="card-text">
-                                        <strong>Price:</strong> $${product.pricePerKg}/kg<br>
+                                        <strong>Price:</strong> Rs.${product.pricePerKg}/kg<br>
                                         <strong>Inventory:</strong> ${product.inventory}<br>
                                         ${product.hasDiscount ? `<strong>Discount:</strong> ${product.discountPercentage}%<br>` : ''}
                                         ${product.isNewArrival ? '<span class="badge bg-success">New Arrival</span> ' : ''}
@@ -963,7 +987,7 @@
             const specificationsList = document.getElementById('specificationsList');
             specificationsList.innerHTML = specifications.map((spec, index) => `
                 <div class="spec-item">
-                    <span><strong>${spec.name}:</strong> ${spec.value}</span>
+                    <span><strong>${spec.specName}:</strong> ${spec.specValue}</span>
                     <button class="btn btn-sm btn-danger" onclick="removeSpecification(${index})">Remove</button>
                 </div>
             `).join('');
@@ -1025,7 +1049,7 @@
             const weightOptionsList = document.getElementById('weightOptionsList');
             weightOptionsList.innerHTML = weightOptions.map((option, index) => `
                 <div class="weight-option-item">
-                    <span><strong>${option.weightValue}g:</strong> $${option.price} ${option.packagingPhoto ? '(with packaging photo)' : ''}</span>
+                    <span><strong>${option.weightValue/1000}kg:</strong> Rs.${option.price} ${option.packagingPhoto ? '(with packaging photo)' : ''}</span>
                     <button class="btn btn-sm btn-danger" onclick="removeWeightOption(${index})">Remove</button>
                 </div>
             `).join('');

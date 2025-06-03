@@ -26,8 +26,10 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -189,6 +191,8 @@ public class OrderService {
             
             // Create and save order items
             List<OrderItem> orderItems = new ArrayList<>();
+            Map<Long, Product> productsToUpdate = new HashMap<>(); // Track products that need inventory updates
+            
             for (OrderItemDTO itemDTO : createOrderDTO.getItems()) {
                 OrderItem item = new OrderItem();
                 item.setOrder(savedOrder);
@@ -206,34 +210,57 @@ public class OrderService {
                 item.setPrice(itemDTO.getPrice());
                 item.setQuantity(itemDTO.getQuantity());
                 orderItems.add(item);
+                
+                // Store product for inventory update (will be used as fallback if trigger doesn't work)
+                productsToUpdate.put(product.getId(), product);
             }
             
             // Save all order items
-            orderItemRepository.saveAll(orderItems);
-            logger.info("Saved {} order items for order #{}", orderItems.size(), savedOrder.getId());
+            List<OrderItem> savedOrderItems = orderItemRepository.saveAll(orderItems);
+            logger.info("Saved {} order items for order #{}", savedOrderItems.size(), savedOrder.getId());
 
-            // Subtract ordered quantities from product inventory (using product name)
-            for (OrderItem item : orderItems) {
-                if (item.getProductName() != null) {
-                    logger.info("Looking up product by name: {} for order item quantity {}", item.getProductName(), item.getQuantity());
-                    try {
-                        Product product = productRepository.findByName(item.getProductName())
-                            .orElseThrow(() -> new EntityNotFoundException("Product not found with name: " + item.getProductName()));
-                        int currentInventory = product.getInventory() != null ? product.getInventory() : 0;
-                        int quantityToSubtract = item.getQuantity() != null ? item.getQuantity() : 0;
-                        int newInventory = currentInventory - quantityToSubtract;
-                        if (newInventory < 0) newInventory = 0; // Prevent negative inventory
-                        logger.info("Product '{}' inventory before: {}. Subtracting: {}. After: {}", product.getName(), currentInventory, quantityToSubtract, newInventory);
-                        product.setInventory(newInventory);
-                        productRepository.save(product);
-                    } catch (Exception e) {
-                        logger.error("Error updating inventory for product '{}': {}", item.getProductName(), e.getMessage());
+            // Check if inventory was updated by the trigger by comparing with initial values
+            // If not, manually update inventory as fallback
+            boolean manualUpdateNeeded = true;
+            
+            try {
+                // Wait briefly to allow triggers to execute
+                Thread.sleep(100);
+                
+                // Refresh products from database to see if triggers updated inventory
+                for (Map.Entry<Long, Product> entry : productsToUpdate.entrySet()) {
+                    Product updatedProduct = productRepository.findById(entry.getKey()).orElse(null);
+                    if (updatedProduct != null) {
+                        Product originalProduct = entry.getValue();
+                        if (updatedProduct.getInventory().equals(originalProduct.getInventory())) {
+                            // Inventory wasn't changed by trigger, we need to manually update
+                            logger.warn("Trigger did not update inventory for product {}. Will update manually.", updatedProduct.getId());
+                        } else {
+                            // Inventory was updated by trigger, no manual update needed
+                            manualUpdateNeeded = false;
+                            logger.info("Trigger successfully updated inventory for product {}", updatedProduct.getId());
+                        }
                     }
-                } else {
-                    logger.warn("Order item missing product name, cannot update inventory.");
+                }
+            } catch (Exception e) {
+                logger.error("Error checking trigger inventory updates: {}", e.getMessage());
+            }
+            
+            // If needed, manually update inventory
+            if (manualUpdateNeeded) {
+                logger.warn("Performing manual inventory update as fallback since triggers aren't working");
+                for (OrderItem item : savedOrderItems) {
+                    if (item.getProduct() != null && item.getQuantity() != null) {
+                        Product product = item.getProduct();
+                        int currentInventory = product.getInventory() != null ? product.getInventory() : 0;
+                        product.setInventory(currentInventory - item.getQuantity());
+                        productRepository.save(product);
+                        logger.info("Manually updated inventory for product {} from {} to {}", 
+                            product.getId(), currentInventory, product.getInventory());
+                    }
                 }
             }
-
+            
             // Fetch the complete order with items
             return getOrderById(savedOrder.getId());
         } catch (Exception e) {
@@ -250,25 +277,8 @@ public class OrderService {
         OrderStatus status = orderStatusRepository.findByName(statusName)
                 .orElseThrow(() -> new EntityNotFoundException("Order status not found with name: " + statusName));
         
-        // Handle inventory for cancelled or refunded orders
-        if ((statusName.equals("Cancelled") || statusName.equals("Refunded")) && 
-            !order.getStatus().getName().equals("Cancelled") && 
-            !order.getStatus().getName().equals("Refunded")) {
-            // Restore inventory for each order item
-            List<OrderItem> orderItems = orderItemRepository.findByOrder(order);
-            for (OrderItem item : orderItems) {
-                if (item.getProduct() != null && item.getProduct().getId() != null) {
-                    Product product = productRepository.findById(item.getProduct().getId())
-                        .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + item.getProduct().getId()));
-                    int currentInventory = product.getInventory() != null ? product.getInventory() : 0;
-                    int quantityToRestore = item.getQuantity() != null ? item.getQuantity() : 0;
-                    product.setInventory(currentInventory + quantityToRestore);
-                    logger.info("Restoring inventory for product {}: {} -> {}", 
-                        product.getName(), currentInventory, currentInventory + quantityToRestore);
-                    productRepository.save(product);
-                }
-            }
-        }
+        // No need to manually update inventory for cancelled/refunded orders
+        // The inventory will be handled by the database triggers when order items are modified or deleted
         
         order.setStatus(status);
         order.setUpdatedAt(LocalDateTime.now());

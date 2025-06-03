@@ -91,16 +91,14 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="index.html">
-                <img src="logo.png" alt="Rice Products" height="40">
-            </a>
+            <a class="navbar-brand" href="#">Rice Products</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html">Home</a>
+                        <a class="nav-link" href="index.html#home">Home</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="all_products.html">All Products</a>
@@ -114,7 +112,7 @@
                     <li class="nav-item" id="authLinks">
                         <a class="nav-link" href="login.html">Login</a>
                     </li>
-                    <li class="nav-item" id="logoutLink" style="display:none;">
+                    <li class="nav-item" id="logoutLink" style="display: none;">
                         <a class="nav-link" href="#" onclick="logout()">Logout</a>
                     </li>
                     <li class="nav-item" id="addWorkerLink" style="display: none;">
@@ -255,7 +253,7 @@
                             <thead>
                                 <tr>
                                     <th>Product</th>
-                                    <!-- <th>Weight</th> -->
+                                    <th>Weight</th>
                                     <th>Price</th>
                                     <th>Quantity</th>
                                     <th>Total</th>
@@ -289,7 +287,7 @@
         const dateFilter = document.getElementById('dateFilter');
         const searchInput = document.getElementById('searchOrder');
         const authStatus = document.getElementById('authStatus');
-        const loginLink = document.getElementById('authLinks');
+        const loginLink = document.getElementById('loginLink');
         const logoutLink = document.getElementById('logoutLink');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const emptyState = document.getElementById('emptyState');
@@ -321,6 +319,77 @@
         }
         
         // Check Authentication
+        function checkAuth() {
+            const authStatusDiv = document.getElementById('authStatus');
+            const authLinks = document.getElementById('authLinks');
+            const logoutLink = document.getElementById('logoutLink');
+            
+            authStatusDiv.style.display = 'block';
+            authStatusDiv.className = 'alert alert-info mb-3';
+            authStatusDiv.textContent = 'Checking authentication status...';
+            
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                authStatusDiv.className = 'alert alert-warning mb-3';
+                authStatusDiv.innerHTML = 'Please log in to access order management.';
+                authLinks.style.display = 'block';
+                logoutLink.style.display = 'none';
+                return;
+            }
+
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                
+                const payload = JSON.parse(jsonPayload);
+                console.log("JWT payload:", payload);
+                
+                if (payload.roles) {
+                    console.log("Roles from token:", payload.roles);
+                    // Allow both ROLE_ADMIN and ROLE_OM
+                    if (payload.roles.includes("ROLE_ADMIN") || payload.roles.includes("ROLE_OM")) {
+                        authStatusDiv.className = 'alert alert-success mb-3';
+                        authStatusDiv.innerHTML = `
+                            <strong>Authenticated as ${payload.roles.includes("ROLE_ADMIN") ? "Admin" : "Order Manager"}</strong><br>
+                            Username: ${payload.sub}<br>
+                            Roles: ${payload.roles.join(', ')}<br>
+                            You have access to order management features.
+                        `;
+                        authLinks.style.display = 'none';
+                        logoutLink.style.display = 'block';
+                        loadOrderData();
+                        loadOrderStatuses();
+                        return;
+                    }
+                }
+                
+                // If we get here, user doesn't have required roles
+                authStatusDiv.className = 'alert alert-warning mb-3';
+                authStatusDiv.innerHTML = `
+                    <strong>Insufficient Role</strong><br>
+                    You are logged in as ${payload.sub} but do not have order management privileges.<br>
+                    ROLE_ADMIN or ROLE_OM is required for order management.
+                `;
+                authLinks.style.display = 'block';
+                logoutLink.style.display = 'none';
+            } catch (error) {
+                console.error("Auth check error:", error);
+                authStatusDiv.className = 'alert alert-danger mb-3';
+                authStatusDiv.innerHTML = `
+                    <strong>Authentication Error</strong><br>
+                    Error: ${error.message}<br>
+                    Please try logging in again.
+                `;
+                authLinks.style.display = 'block';
+                logoutLink.style.display = 'none';
+            }
+        }
+
+        // Check authentication status for navbar
         function checkAuthStatus() {
             const token = localStorage.getItem('token');
             const authLinks = document.getElementById('authLinks');
@@ -335,46 +404,44 @@
                 logoutLink.style.display = 'block';
                 
                 // Fetch user info
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                console.log('User roles:', payload.roles); // Debug log
-                
-                if (payload.roles && payload.roles.includes('ROLE_ADMIN')) {
-                    // Admin has access to everything
-                    orderManagementLink.style.display = 'block';
-                    addWorkerLink.style.display = 'block';
-                    productManagementLink.style.display = 'block';
+                fetch('http://localhost:8080/api/auth/user', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Check user role and adjust navigation
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    console.log('User roles:', payload.roles); // Debug log
                     
-                    // Show auth status for admins and order managers
-                    showAuthStatusDiv(payload);
-                    loadOrderData();
-                    loadOrderStatuses();
-                } else if (payload.roles && payload.roles.includes('ROLE_OM')) {
-                    // Order Manager has access to order management
-                    orderManagementLink.style.display = 'block';
-                    addWorkerLink.style.display = 'none';
-                    productManagementLink.style.display = 'none';
-                    
-                    // Show auth status for admins and order managers
-                    showAuthStatusDiv(payload);
-                    loadOrderData();
-                    loadOrderStatuses();
-                } else if (payload.roles && (payload.roles.includes('ROLE_PM') || payload.roles.includes('ROLE_PRODUCT_MANAGER'))) {
-                    // Product Manager has access to product management and basic pages
-                    orderManagementLink.style.display = 'none';
-                    addWorkerLink.style.display = 'none';
-                    productManagementLink.style.display = 'block';
-                    
-                    // Redirect product managers as they don't have access
-                    showInsufficientRoleMessage();
-                } else {
-                    // Regular users have limited access
-                    orderManagementLink.style.display = 'none';
-                    addWorkerLink.style.display = 'none';
-                    productManagementLink.style.display = 'none';
-                    
-                    // Redirect regular users as they don't have access
-                    showInsufficientRoleMessage();
-                }
+                    if (payload.roles && payload.roles.includes('ROLE_ADMIN')) {
+                        // Admin has access to everything
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'block';
+                        productManagementLink.style.display = 'block';
+                    } else if (payload.roles && payload.roles.includes('ROLE_OM')) {
+                        // Order Manager has access to order management
+                        orderManagementLink.style.display = 'block';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                    } else if (payload.roles && (payload.roles.includes('ROLE_PM') || payload.roles.includes('ROLE_PRODUCT_MANAGER'))) {
+                        // Product Manager has access to product management and basic pages
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'block';
+                    } else {
+                        // Regular users have limited access
+                        orderManagementLink.style.display = 'none';
+                        addWorkerLink.style.display = 'none';
+                        productManagementLink.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching user info:', error);
+                    logout();
+                });
             } else {
                 // User is not logged in
                 authLinks.style.display = 'block';
@@ -382,37 +449,9 @@
                 orderManagementLink.style.display = 'none';
                 addWorkerLink.style.display = 'none';
                 productManagementLink.style.display = 'none';
-                
-                // Show login required message
-                authStatus.style.display = 'block';
-                authStatus.className = 'alert alert-warning mb-3';
-                authStatus.innerHTML = 'Please log in to access order management.';
             }
         }
-        
-        // Show the auth status div with user info
-        function showAuthStatusDiv(payload) {
-            authStatus.style.display = 'block';
-            authStatus.className = 'alert alert-success mb-3';
-            authStatus.innerHTML = `
-                <strong>Authenticated as ${payload.roles.includes("ROLE_ADMIN") ? "Admin" : "Order Manager"}</strong><br>
-                Username: ${payload.sub}<br>
-                Roles: ${payload.roles.join(', ')}<br>
-                You have access to order management features.
-            `;
-        }
-        
-        // Show insufficient role message
-        function showInsufficientRoleMessage() {
-            authStatus.style.display = 'block';
-            authStatus.className = 'alert alert-warning mb-3';
-            authStatus.innerHTML = `
-                <strong>Insufficient Role</strong><br>
-                You are logged in but do not have order management privileges.<br>
-                ROLE_ADMIN or ROLE_OM is required for order management.
-            `;
-        }
-        
+
         // Load Order Data
         function loadOrderData() {
             loadingSpinner.style.display = 'block';
@@ -655,7 +694,7 @@
             
             order.orderItems.forEach(item => {
                 const itemTotal = item.price * item.quantity;
-                // const weightDisplay = item.weight ? `${item.weight}g` : 'N/A';
+                const weightDisplay = item.weight ? `${item.weight/1000}kg` : 'N/A';
                 const imageUrl = item.productImage || 'https://via.placeholder.com/50';
                 
                 itemsContainer.innerHTML += `
@@ -668,7 +707,7 @@
                                 </div>
                             </div>
                         </td>
-                       
+                        <td>${weightDisplay}</td>
                         <td>Rs.${item.price.toFixed(2)}</td>
                         <td>${item.quantity}</td>
                         <td>Rs.${itemTotal.toFixed(2)}</td>
@@ -676,8 +715,6 @@
                 `;
             });
             
-            // <td>${weightDisplay}</td>
-
             // Show the modal
             orderDetailsModal.show();
         }
@@ -770,12 +807,13 @@
         // Logout function
         function logout() {
             localStorage.removeItem('token');
-            window.location.href = 'login.html';
+            window.location.reload();
         }
 
         // Event Listeners
         window.addEventListener('DOMContentLoaded', () => {
-            checkAuthStatus();
+            checkAuthStatus(); // Check navbar auth status
+            checkAuth(); // Check order management specific auth
             
             // Filter change events
             statusFilter.addEventListener('change', filterAndDisplayOrders);

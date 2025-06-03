@@ -224,17 +224,17 @@
                             <!-- Cart items will be loaded here -->
                         </div>
                         
-                        <div class="d-flex justify-content-between mb-2">
+                        <div class="d-flex justify-content-between mt-3">
                             <span>Subtotal:</span>
-                            <span id="subtotal">Rs.0.00</span>
+                            <span id="subtotal">$0.00</span>
                         </div>
-                        <div class="d-flex justify-content-between mb-2">
+                        <div class="d-flex justify-content-between mt-2">
                             <span>Shipping:</span>
-                            <span id="shipping">Rs.0.00</span>
+                            <span id="shipping">$0.00</span>
                         </div>
-                        <div class="d-flex justify-content-between fw-bold">
+                        <div class="d-flex justify-content-between order-total">
                             <span>Total:</span>
-                            <span id="total">Rs.0.00</span>
+                            <span id="total">$0.00</span>
                         </div>
                         
                         <button id="placeOrderBtn" class="btn btn-primary w-100 mt-4">
@@ -541,7 +541,7 @@
                         <div class="mt-1">Qty: ${item.quantity}</div>
                     </div>
                     <div class="cart-item-price">
-                        Rs.${totalPrice.toFixed(2)}
+                        $${totalPrice.toFixed(2)}
                     </div>
                 `;
                 
@@ -560,9 +560,9 @@
             const shipping = cart.length > 0 ? SHIPPING_FEE : 0;
             const total = subtotal + shipping;
             
-            subtotalElement.textContent = `Rs.${subtotal.toFixed(2)}`;
-            shippingElement.textContent = `Rs.${shipping.toFixed(2)}`;
-            totalElement.textContent = `Rs.${total.toFixed(2)}`;
+            subtotalElement.textContent = `$${subtotal.toFixed(2)}`;
+            shippingElement.textContent = `$${shipping.toFixed(2)}`;
+            totalElement.textContent = `$${total.toFixed(2)}`;
         }
         
         // Place Order
